@@ -20,6 +20,10 @@
     "clean": "turbo clean && rm -rf node_modules",
     "prepare": "husky"
   },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
