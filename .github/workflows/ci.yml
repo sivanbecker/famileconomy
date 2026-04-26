@@ -104,12 +104,13 @@ jobs:
           npm audit --audit-level=high --workspace=packages/utils
 
       - name: Snyk vulnerability scan
+        # apps/mobile excluded: Expo 51 toolchain CVEs (tar, xmldom) tracked in .trivyignore
         uses: snyk/actions/node@master
         continue-on-error: false
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --all-projects
+          args: --severity-threshold=high --all-projects --exclude=apps/mobile
 
   db-migration-check:
     runs-on: ubuntu-latest
