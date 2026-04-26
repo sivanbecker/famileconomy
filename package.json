@@ -37,12 +37,6 @@
       "prettier --write"
     ]
   },
-  "overrides": {
-    "glob": "^10.5.0",
-    "node-pg-migrate": {
-      "glob": "^10.5.0"
-    }
-  },
   "engines": {
     "node": ">=20.0.0",
     "npm": ">=10.0.0"

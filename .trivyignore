@@ -1,14 +1,7 @@
-# Next.js 14 DoS vulnerabilities (GHSA-h25m-26qc-wcjf, GHSA-q4gf-8mx6-v5v3).
-# Fixed in Next.js 15+. Migrate to Next.js 15 before production launch.
-# No 14.x patch available upstream.
-GHSA-h25m-26qc-wcjf
-GHSA-q4gf-8mx6-v5v3
-
-# CVEs in Expo CLI toolchain dependencies (@xmldom/xmldom, node-tar).
-# These packages are used only by Expo's build tooling (never shipped to production).
-# Fixing requires downgrading to Expo 49 which breaks the SDK.
-# Tracked and will be resolved when Expo SDK 52+ ships patched versions.
-# Dependency vulnerability scanning for npm packages is handled by Snyk + npm audit in CI.
+# CVEs in Expo SDK 51 CLI toolchain (@xmldom/xmldom, node-tar).
+# These are in Expo's build tools — never shipped to production.
+# Resolution: run `npx expo install --fix` when upgrading to Expo SDK 55+
+# at the start of mobile development. Do not manually resolve Expo peer deps.
 CVE-2026-34601
 CVE-2026-41672
 CVE-2026-41673
@@ -22,11 +15,3 @@ CVE-2026-24842
 CVE-2026-26960
 CVE-2026-29786
 CVE-2026-31802
-
-# Fastify v4 validation bypass (CVE-2026-25223). Fixed in Fastify v5.7.2.
-# Migrate to Fastify v5 before production launch (breaking change).
-CVE-2026-25223
-
-# glob CVE-2025-64756 in node-pg-migrate (migration CLI tool — never in production request path).
-# npm workspace overrides cannot force nested workspace dep resolution; tracked for node-pg-migrate upgrade.
-CVE-2025-64756
