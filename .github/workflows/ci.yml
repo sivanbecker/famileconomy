@@ -93,9 +93,19 @@ jobs:
           severity: 'HIGH,CRITICAL'
           exit-code: '1'
 
+      - name: npm audit (non-mobile workspaces)
+        # Mobile is excluded: Expo 51 toolchain CVEs are tracked in .trivyignore
+        # and cannot be resolved without upgrading to Expo 55+.
+        run: |
+          npm audit --audit-level=high --workspace=apps/web
+          npm audit --audit-level=high --workspace=apps/api
+          npm audit --audit-level=high --workspace=packages/ui
+          npm audit --audit-level=high --workspace=packages/types
+          npm audit --audit-level=high --workspace=packages/utils
+
       - name: Snyk vulnerability scan
         uses: snyk/actions/node@master
-        continue-on-error: true
+        continue-on-error: false
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
