@@ -1,5 +1,6 @@
 {
   "name": "famileconomy",
+  "type": "module",
   "version": "0.1.0",
   "private": true,
   "workspaces": [
@@ -22,11 +23,15 @@
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-security": "^3.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^15.0.0",
     "prettier": "^3.0.0",
     "turbo": "^2.0.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "typescript-eslint": "^8.0.0"
   },
   "lint-staged": {
     "*.{ts,tsx}": [

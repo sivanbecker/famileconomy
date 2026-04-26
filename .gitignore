@@ -7,8 +7,11 @@ dist
 build
 out
 
-# Turbo
-.turbo
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Turbo cache (all workspaces)
+**/.turbo
 
 # Test coverage
 coverage
@@ -31,6 +34,7 @@ Thumbs.db
 
 # IDE
 .idea
+.vscode/
 *.swp
 *.swo
 
@@ -39,7 +43,7 @@ Thumbs.db
 
 # Expo
 .expo
-apps/mobile/.expo
 
 # Prisma
 apps/api/src/generated
+.turbo/cache/cf8457ddfd56d88b-meta.json
