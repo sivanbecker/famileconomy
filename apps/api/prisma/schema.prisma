@@ -66,23 +66,46 @@ enum AccountType {
   @@map("account_type")
 }
 
+enum TransactionStatus {
+  CLEARED
+  PENDING
+
+  @@map("transaction_status")
+}
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
+// Monetary columns are BYTEA in PostgreSQL (pgcrypto encrypted).
+// Prisma maps them as Bytes. The service layer decrypts to Int (agorot).
 
 model Transaction {
-  id              String   @id @default(uuid())
-  accountId       String   @map("account_id")
-  importBatchId   String?  @map("import_batch_id")
-  date            DateTime @db.Date
-  description     String
-  amountShekels   Int      @map("amount_shekels")
-  category        String?
-  dedupeHash      String?  @unique @map("dedupe_hash")
-  installmentNum  Int?     @map("installment_num")
-  installmentOf   Int?     @map("installment_of")
-  createdAt       DateTime @default(now()) @map("created_at")
+  id              String            @id @default(uuid())
+  accountId       String            @map("account_id")
+  importBatchId   String?           @map("import_batch_id")
 
-  account      Account      @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  importBatch  ImportBatch? @relation(fields: [importBatchId], references: [id])
+  // Purchase date (always present); charge/billing date when provided by the bank
+  transactionDate DateTime          @db.Date @map("transaction_date")
+  chargeDate      DateTime?         @db.Date @map("charge_date")
+
+  // Encrypted: merchant name
+  description     Bytes
+
+  // Encrypted: charge amount in agorot (positive = debit, negative = credit/cancellation)
+  amountAgorot    Bytes             @map("amount_agorot")
+
+  // Encrypted: original amount when transaction currency differs from ILS
+  originalAmountAgorot Bytes?       @map("original_amount_agorot")
+  originalCurrency     String?      @map("original_currency")
+
+  category        String?
+  cardLastFour    String?           @map("card_last_four")
+  status          TransactionStatus @default(CLEARED)
+  dedupeHash      String?           @unique @map("dedupe_hash")
+  installmentNum  Int?              @map("installment_num")
+  installmentOf   Int?              @map("installment_of")
+  createdAt       DateTime          @default(now()) @map("created_at")
+
+  account        Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importBatch    ImportBatch?   @relation(fields: [importBatchId], references: [id])
   recurringMatch RecurringMatch?
 
   @@map("transactions")
@@ -106,7 +129,7 @@ model RecurringExpense {
   id              String   @id @default(uuid())
   userId          String   @map("user_id")
   name            String
-  expectedAmountShekels Int @map("expected_amount_shekels")
+  expectedAmountAgorot Bytes @map("expected_amount_agorot")
   dayOfMonth      Int?     @map("day_of_month")
   matchPattern    String   @map("match_pattern")
   active          Boolean  @default(true)

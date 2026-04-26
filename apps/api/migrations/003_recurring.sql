@@ -2,13 +2,13 @@
 -- Creates recurring_expenses and recurring_matches tables with RLS
 
 -- ─── Recurring Expenses ───────────────────────────────────────────────────────
--- expected_amount_shekels is encrypted at rest
+-- expected_amount_agorot is encrypted at rest (1 ILS = 100 agorot)
 
 CREATE TABLE recurring_expenses (
   id                      UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id                 UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name                    TEXT        NOT NULL,
-  expected_amount_shekels BYTEA       NOT NULL,  -- pgcrypto encrypted integer
+  expected_amount_agorot  BYTEA       NOT NULL,  -- pgcrypto encrypted integer (agorot)
   day_of_month            INTEGER     CHECK (day_of_month BETWEEN 1 AND 31),
   match_pattern           TEXT        NOT NULL,
   active                  BOOLEAN     NOT NULL DEFAULT true,
