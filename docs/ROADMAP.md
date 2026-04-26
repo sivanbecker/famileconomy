@@ -53,7 +53,7 @@
 - [x] Add `release-please.yml` workflow
 - [x] Add `release-please-config.json` and `.release-please-manifest.json`
 - [x] Add `codeql.yml` workflow (static security analysis — `continue-on-error: true`; repo is now public so it runs)
-- [x] Set Snyk `continue-on-error: false` (mobile excluded via `--exclude=apps/mobile` — same Expo CVEs as .trivyignore)
+- [ ] Set Snyk `continue-on-error: false` (currently non-blocking: free plan quota exhausted; `npm audit` + Trivy are blocking in the meantime)
 - [x] Add `npm audit --audit-level=high` step to CI security job
 
 > **Release gate:** First release (`v0.1.0`) is tagged after Phase 5 (auth + database) is complete and CI is fully green including E2E.
