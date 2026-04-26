@@ -1,0 +1,8 @@
+/* Web-only additions — shared design tokens live in packages/ui/globals.css */
+
+@layer base {
+  /* RTL icon flip utility */
+  [dir='rtl'] .rtl-flip {
+    transform: scaleX(-1);
+  }
+}

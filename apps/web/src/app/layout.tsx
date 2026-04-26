@@ -1,4 +1,6 @@
 import type { Metadata } from 'next'
+import '@famileconomy/ui/globals.css'
+import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Famileconomy',
