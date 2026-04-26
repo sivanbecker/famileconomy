@@ -12,6 +12,9 @@ jobs:
   analyze:
     runs-on: ubuntu-latest
     name: CodeQL Analysis
+    # CodeQL requires GitHub Advanced Security (paid) on private repos.
+    # continue-on-error keeps it non-blocking until the repo is public or upgraded.
+    continue-on-error: true
     permissions:
       security-events: write
       actions: read
