@@ -65,12 +65,12 @@
 
 ## Phase 4 — Design System
 
-- [~] Run `npx shadcn-ui@latest init` in `apps/web`
-- [~] Install `tailwindcss-animate @tailwindcss/typography`
-- [~] Apply Claude Design tokens to `globals.css` and `tailwind.config.ts`
-- [~] Add base shared components to `packages/ui`: `Button`, `Card`, `Input`, `Badge`, `Dialog`
-- [~] Verify RTL rendering in browser (Hebrew layout, logical CSS properties)
-- [~] Configure `nativewind` in `apps/mobile` for shared Tailwind tokens on React Native
+- [x] Run `npx shadcn-ui@latest init` in `apps/web`
+- [x] Install `tailwindcss-animate @tailwindcss/typography`
+- [x] Apply Claude Design tokens to `globals.css` and `tailwind.config.ts`
+- [x] Add base shared components to `packages/ui`: `Button`, `Card`, `Input`, `Badge`, `Dialog`
+- [x] Verify RTL rendering in browser (Hebrew layout, logical CSS properties)
+- [x] Configure `nativewind` in `apps/mobile` for shared Tailwind tokens on React Native
 
 ---
 
