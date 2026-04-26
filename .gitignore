@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+
+# Build outputs
+.next
+dist
+build
+out
+
+# Turbo
+.turbo
+
+# Test coverage
+coverage
+
+# Environment files — never commit these
+.env
+.env.local
+.env.*.local
+.env.development
+.env.staging
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea
+*.swp
+*.swo
+
+# Claude Code local settings (contains personal permissions)
+.claude/settings.local.json
+
+# Expo
+.expo
+apps/mobile/.expo
+
+# Prisma
+apps/api/src/generated

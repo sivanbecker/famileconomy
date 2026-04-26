@@ -1,0 +1,17 @@
+# CVEs in Expo SDK 51 CLI toolchain (@xmldom/xmldom, node-tar).
+# These are in Expo's build tools — never shipped to production.
+# Resolution: run `npx expo install --fix` when upgrading to Expo SDK 55+
+# at the start of mobile development. Do not manually resolve Expo peer deps.
+CVE-2026-34601
+CVE-2026-41672
+CVE-2026-41673
+CVE-2026-41674
+CVE-2026-41675
+CVE-2026-46392
+CVE-2026-47071
+CVE-2026-23745
+CVE-2026-23950
+CVE-2026-24842
+CVE-2026-26960
+CVE-2026-29786
+CVE-2026-31802
