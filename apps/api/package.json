@@ -13,10 +13,11 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "format:check": "prettier --check \"src/**/*.ts\"",
-    "db:migrate": "node-pg-migrate up",
-    "db:migrate:check": "node-pg-migrate status",
-    "db:migrate:status": "node-pg-migrate status",
-    "db:migrate:create": "node-pg-migrate create"
+    "db:migrate": "node-pg-migrate up --migrations-dir migrations",
+    "db:migrate:check": "node-pg-migrate status --migrations-dir migrations",
+    "db:migrate:status": "node-pg-migrate status --migrations-dir migrations",
+    "db:migrate:create": "node-pg-migrate create --migrations-dir migrations",
+    "db:generate-types": "prisma generate"
   },
   "dependencies": {
     "@famileconomy/types": "*",

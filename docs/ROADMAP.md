@@ -76,13 +76,13 @@
 
 ## Phase 5 — Database & Auth (MVP Core)
 
-- [ ] Set up local PostgreSQL via Docker Compose
-- [ ] Write initial migration: `001_users_accounts.sql` — `users`, `accounts`, `sessions` tables
-- [ ] Write migration: `002_transactions.sql` — `transactions`, `import_batches` tables
-- [ ] Write migration: `003_recurring.sql` — `recurring_expenses`, `recurring_matches` tables
-- [ ] Write migration: `004_audit_log.sql` — append-only audit log, REVOKE UPDATE/DELETE from app role
-- [ ] Enable Row Level Security on all financial tables
-- [ ] Set up `db:generate-types` script (introspect DB → `packages/types/src/database.ts`)
+- [~] Set up local PostgreSQL via Docker Compose
+- [~] Write initial migration: `001_users_accounts.sql` — `users`, `accounts`, `sessions` tables
+- [~] Write migration: `002_transactions.sql` — `transactions`, `import_batches` tables
+- [~] Write migration: `003_recurring.sql` — `recurring_expenses`, `recurring_matches` tables
+- [~] Write migration: `004_audit_log.sql` — append-only audit log, REVOKE UPDATE/DELETE from app role
+- [~] Enable Row Level Security on all financial tables
+- [~] Set up `db:generate-types` script (introspect DB → `packages/types/src/database.ts`)
 - [ ] Implement auth: register + login (Argon2id hashing, JWT 15min, rotating refresh tokens)
 - [ ] Implement refresh token rotation: one-time-use, family revocation on reuse
 - [ ] Add `GET /health` and `GET /ready` endpoints to Fastify
