@@ -37,6 +37,9 @@
     "db:migrate": {
       "cache": false
     },
+    "db:migrate:check": {
+      "cache": false
+    },
     "db:migrate:status": {
       "cache": false
     },
