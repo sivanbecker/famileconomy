@@ -52,7 +52,7 @@
 - [x] GitHub Actions CI: format, lint, typecheck, unit tests, build, security scan, migration lint
 - [ ] Add `release-please.yml` workflow
 - [ ] Add `release-please-config.json` and `.release-please-manifest.json`
-- [ ] Add `codeql.yml` workflow (static security analysis — free for public repos)
+- [x] Add `codeql.yml` workflow (static security analysis — free for public repos)
 - [ ] Set Snyk `continue-on-error: false` (currently `true` — must fix before beta)
 - [ ] Add `npm audit --audit-level=high` step to CI security job
 
