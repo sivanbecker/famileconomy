@@ -76,18 +76,18 @@
 
 ## Phase 5 — Database & Auth (MVP Core)
 
-- [~] Set up local PostgreSQL via Docker Compose
-- [~] Write initial migration: `001_users_accounts.sql` — `users`, `accounts`, `sessions` tables
-- [~] Write migration: `002_transactions.sql` — `transactions`, `import_batches` tables
-- [~] Write migration: `003_recurring.sql` — `recurring_expenses`, `recurring_matches` tables
-- [~] Write migration: `004_audit_log.sql` — append-only audit log, REVOKE UPDATE/DELETE from app role
-- [~] Enable Row Level Security on all financial tables
+- [x] Set up local PostgreSQL via Docker Compose
+- [x] Write initial migration: `001_users_accounts.sql` — `users`, `accounts`, `sessions` tables
+- [x] Write migration: `002_transactions.sql` — `transactions`, `import_batches` tables
+- [x] Write migration: `003_recurring.sql` — `recurring_expenses`, `recurring_matches` tables
+- [x] Write migration: `004_audit_log.sql` — append-only audit log, REVOKE UPDATE/DELETE from app role
+- [x] Enable Row Level Security on all financial tables
 - [~] Set up `db:generate-types` script (introspect DB → `packages/types/src/database.ts`)
-- [ ] Implement auth: register + login (Argon2id hashing, JWT 15min, rotating refresh tokens)
-- [ ] Implement refresh token rotation: one-time-use, family revocation on reuse
+- [~] Implement auth: register + login (Argon2id hashing, JWT 15min, rotating refresh tokens)
+- [~] Implement refresh token rotation: one-time-use, family revocation on reuse
 - [ ] Add `GET /health` and `GET /ready` endpoints to Fastify
 - [ ] Register `@fastify/helmet`, `@fastify/cors`, `@fastify/rate-limit` on all routes
-- [ ] Write unit tests for auth service (TDD: tests first, then implementation)
+- [~] Write unit tests for auth service (TDD: tests first, then implementation)
 - [ ] Write unit tests for financial math (edge cases: zero, negative, max safe integer)
 
 > **Release gate:** `v0.1.0-alpha` — auth working end-to-end, DB migrations running, CI fully green.
