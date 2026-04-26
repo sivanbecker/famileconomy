@@ -22,7 +22,7 @@
 - [x] Create GitHub repository (private)
 - [ ] Enable branch protection on `main` (require PR + CI pass + 1 review, no force-push)
 - [ ] Enable GitHub Secret Scanning (Settings → Security)
-- [ ] Enable Dependabot — add `.github/dependabot.yml`
+- [x] Enable Dependabot — add `.github/dependabot.yml`
 - [ ] Set up GitHub Environments: `staging` and `production` (manual approval gate on production)
 - [ ] Add GitHub Secrets: `SNYK_TOKEN`, `VERCEL_TOKEN`, `RAILWAY_TOKEN`, `DATABASE_URL_TEST`
 

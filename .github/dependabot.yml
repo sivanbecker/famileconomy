@@ -1,0 +1,25 @@
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+    open-pull-requests-limit: 5
+    labels:
+      - 'security'
+      - 'dependencies'
+    ignore:
+      # Expo 51 toolchain — cannot upgrade without full Expo 55 migration
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'react-native'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    labels:
+      - 'ci'
+      - 'dependencies'
