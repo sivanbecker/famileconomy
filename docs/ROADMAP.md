@@ -19,12 +19,15 @@
 
 ## Phase 1 — Repository Setup
 
-- [x] Create GitHub repository (private)
-- [ ] Enable branch protection on `main` (require PR + CI pass + 1 review, no force-push)
-- [ ] Enable GitHub Secret Scanning (Settings → Security)
+- [x] Create GitHub repository (public)
+- [x] Enable branch protection on `main` (require PR + CI pass, no force-push)
+- [x] Enable GitHub Secret Scanning (enabled by default on public repos)
 - [x] Enable Dependabot — add `.github/dependabot.yml`
-- [ ] Set up GitHub Environments: `staging` and `production` (manual approval gate on production)
-- [ ] Add GitHub Secrets: `SNYK_TOKEN`, `VERCEL_TOKEN`, `RAILWAY_TOKEN`, `DATABASE_URL_TEST`
+- [x] Set up GitHub Environments: `staging` and `production`
+- [x] Add `SNYK_TOKEN` secret
+- [ ] Add `VERCEL_TOKEN` secret (needed before deploy-to-staging job runs)
+- [ ] Add `RAILWAY_TOKEN` secret (needed before deploy-to-staging job runs)
+- [ ] Add `DATABASE_URL_TEST` secret (needed for migration lint + E2E tests)
 
 ---
 
