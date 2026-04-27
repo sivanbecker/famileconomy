@@ -85,8 +85,8 @@
 - [~] Set up `db:generate-types` script (introspect DB → `packages/types/src/database.ts`)
 - [~] Implement auth: register + login (Argon2id hashing, JWT 15min, rotating refresh tokens)
 - [~] Implement refresh token rotation: one-time-use, family revocation on reuse
-- [ ] Add `GET /health` and `GET /ready` endpoints to Fastify
-- [ ] Register `@fastify/helmet`, `@fastify/cors`, `@fastify/rate-limit` on all routes
+- [~] Add `GET /health` and `GET /ready` endpoints to Fastify
+- [~] Register `@fastify/helmet`, `@fastify/cors`, `@fastify/rate-limit` on all routes
 - [~] Write unit tests for auth service (TDD: tests first, then implementation)
 - [ ] Write unit tests for financial math (edge cases: zero, negative, max safe integer)
 
