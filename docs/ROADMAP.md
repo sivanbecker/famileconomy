@@ -194,9 +194,9 @@
 
 ## Release History
 
-| Version | Date | Milestone       |
-| ------- | ---- | --------------- |
-| —       | —    | No releases yet |
+| Version      | Date       | Milestone                                                      |
+| ------------ | ---------- | -------------------------------------------------------------- |
+| v0.1.0-alpha | 2026-04-27 | Auth end-to-end, DB migrations, Fastify server, CI fully green |
 
 ---
 
