@@ -1,11 +1,17 @@
+import { initSentry } from './lib/sentry.js'
 import Fastify, { type FastifyInstance } from 'fastify'
+import { logger, pinoOptions } from './lib/logger.js'
 import { registerSecurityPlugins } from './plugins/security.js'
 import { healthRoutes } from './routes/health.js'
 import { authRoutes } from './routes/auth.js'
 
+initSentry()
+
 export async function createApp(): Promise<FastifyInstance> {
+  const isTest = process.env['NODE_ENV'] === 'test'
   const app = Fastify({
-    logger: process.env['NODE_ENV'] !== 'test',
+    // Pass pino options (not a pino instance) so Fastify's generic stays on RawServerDefault
+    logger: isTest ? false : pinoOptions,
   })
 
   await registerSecurityPlugins(app)
@@ -23,7 +29,7 @@ if (process.env['NODE_ENV'] !== 'test') {
   createApp()
     .then(app => app.listen({ port, host }))
     .catch((err: unknown) => {
-      console.error(err)
+      logger.error({ err }, 'server failed to start')
       process.exit(1)
     })
 }

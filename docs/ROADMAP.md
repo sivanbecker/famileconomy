@@ -96,14 +96,14 @@
 
 ## Phase 6 — Observability Bootstrap
 
-- [ ] Install `pino-pretty` (dev transport) in `apps/api`
-- [ ] Install `@logtail/pino` (prod transport) in `apps/api`
-- [ ] Initialize OpenTelemetry SDK in `apps/api/src/instrumentation.ts` (loaded before anything else)
-- [ ] Add auto-instrumentation for Fastify, `pg`, `ioredis`
+- [~] Install `pino-pretty` (dev transport) in `apps/api`
+- [~] Install `@logtail/pino` (prod transport) in `apps/api`
+- [~] Initialize OpenTelemetry SDK in `apps/api/src/instrumentation.ts` (loaded before anything else)
+- [~] Add auto-instrumentation for Fastify, `pg`, `ioredis`
 - [ ] Sign up for Grafana Cloud free tier — save `OTEL_EXPORTER_OTLP_ENDPOINT` + headers to Railway env
 - [ ] Sign up for Better Stack — configure `LOGTAIL_SOURCE_TOKEN` env var
-- [ ] Initialize Sentry in `apps/api`, `apps/web`, `apps/mobile`
-- [ ] Add `beforeSend` Sentry hook to strip request body / financial data before sending
+- [~] Initialize Sentry in `apps/api`, `apps/web`, `apps/mobile`
+- [~] Add `beforeSend` Sentry hook to strip request body / financial data before sending
 - [ ] Set up Better Stack uptime monitors for `/health` and `/ready`
 - [ ] Create Grafana dashboard: API overview (request rate, error rate, P99 latency)
 - [ ] Add OTel manual spans to BullMQ job processors (once workers exist)
