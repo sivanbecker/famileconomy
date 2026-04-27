@@ -47,3 +47,4 @@ Thumbs.db
 # Prisma
 apps/api/src/generated
 .turbo/cache/cf8457ddfd56d88b-meta.json
+examples/
