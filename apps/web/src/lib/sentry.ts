@@ -22,6 +22,7 @@ function scrubFinancialData(obj: unknown): unknown {
   if (Array.isArray(obj)) return obj.map(scrubFinancialData)
   const result: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
+    // eslint-disable-next-line security/detect-object-injection -- key comes from Object.entries, value is sanitized
     result[key] = FINANCIAL_FIELDS.has(key.toLowerCase()) ? '[REDACTED]' : scrubFinancialData(value)
   }
   return result

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "tsx --import ./src/instrumentation.ts watch src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "lint": "eslint src --max-warnings 0",
@@ -17,7 +17,8 @@
     "db:migrate:check": "node-pg-migrate status --migrations-dir migrations",
     "db:migrate:status": "node-pg-migrate status --migrations-dir migrations",
     "db:migrate:create": "node-pg-migrate create --migrations-dir migrations",
-    "db:generate-types": "prisma generate"
+    "db:generate-types": "prisma generate",
+    "dev:instrument": "tsx --import ./src/instrumentation.ts src/server.ts"
   },
   "dependencies": {
     "@famileconomy/types": "*",

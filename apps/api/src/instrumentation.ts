@@ -18,24 +18,11 @@ if (process.env['NODE_ENV'] !== 'test' && endpoint) {
       [SEMRESATTRS_SERVICE_NAME]: serviceName,
       [SEMRESATTRS_SERVICE_VERSION]: serviceVersion,
     }),
-    traceExporter: new OTLPTraceExporter({
-      url: `${endpoint}/v1/traces`,
-      headers: {
-        // Grafana Cloud uses Authorization: Basic <base64(instanceId:token)>
-        // Set OTEL_EXPORTER_OTLP_HEADERS="Authorization=Basic <value>" in Railway env
-        ...(process.env['OTEL_EXPORTER_OTLP_HEADERS']
-          ? Object.fromEntries(
-              process.env['OTEL_EXPORTER_OTLP_HEADERS'].split(',').map(h => {
-                const [k, ...v] = h.split('=')
-                return [k?.trim() ?? '', v.join('=').trim()]
-              })
-            )
-          : {}),
-      },
-    }),
+    // The SDK reads OTEL_EXPORTER_OTLP_ENDPOINT and OTEL_EXPORTER_OTLP_HEADERS
+    // automatically from env — no need to pass them explicitly
+    traceExporter: new OTLPTraceExporter(),
     instrumentations: [
       getNodeAutoInstrumentations({
-        // Fastify, pg, ioredis, http — all auto-instrumented
         '@opentelemetry/instrumentation-fs': { enabled: false }, // too noisy
       }),
     ],
