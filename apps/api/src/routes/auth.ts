@@ -5,6 +5,15 @@ import { registerSchema, loginSchema } from '../lib/schemas.js'
 const COOKIE_NAME = 'refresh_token' as const
 const COOKIE_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
+const AUTH_RATE_LIMIT_CONFIG = {
+  config: {
+    rateLimit: {
+      max: 5,
+      timeWindow: '1 minute',
+    },
+  },
+} as const
+
 function setRefreshCookie(reply: FastifyReply, token: string): void {
   reply.setCookie(COOKIE_NAME, token, {
     httpOnly: true,
@@ -43,72 +52,88 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   const authService = new AuthService()
 
   // POST /auth/register
-  app.post('/auth/register', async (req: FastifyRequest, reply: FastifyReply) => {
-    const parsed = registerSchema.safeParse(req.body)
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
-    }
-
-    try {
-      const result = await authService.register(parsed.data)
-      setRefreshCookie(reply, result.refreshToken)
-      return reply.status(201).send({ user: result.user, accessToken: result.accessToken })
-    } catch (err) {
-      if (err instanceof AuthError) {
-        return reply.status(mapAuthError(err)).send({ error: err.code })
+  app.post(
+    '/auth/register',
+    AUTH_RATE_LIMIT_CONFIG,
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      const parsed = registerSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
       }
-      throw err
+
+      try {
+        const result = await authService.register(parsed.data)
+        setRefreshCookie(reply, result.refreshToken)
+        return reply.status(201).send({ user: result.user, accessToken: result.accessToken })
+      } catch (err) {
+        if (err instanceof AuthError) {
+          return reply.status(mapAuthError(err)).send({ error: err.code })
+        }
+        throw err
+      }
     }
-  })
+  )
 
   // POST /auth/login
-  app.post('/auth/login', async (req: FastifyRequest, reply: FastifyReply) => {
-    const parsed = loginSchema.safeParse(req.body)
-    if (!parsed.success) {
-      return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
-    }
-
-    try {
-      const result = await authService.login(parsed.data)
-      setRefreshCookie(reply, result.refreshToken)
-      return reply.send({ user: result.user, accessToken: result.accessToken })
-    } catch (err) {
-      if (err instanceof AuthError) {
-        return reply.status(mapAuthError(err)).send({ error: err.code })
+  app.post(
+    '/auth/login',
+    AUTH_RATE_LIMIT_CONFIG,
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      const parsed = loginSchema.safeParse(req.body)
+      if (!parsed.success) {
+        return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
       }
-      throw err
+
+      try {
+        const result = await authService.login(parsed.data)
+        setRefreshCookie(reply, result.refreshToken)
+        return reply.send({ user: result.user, accessToken: result.accessToken })
+      } catch (err) {
+        if (err instanceof AuthError) {
+          return reply.status(mapAuthError(err)).send({ error: err.code })
+        }
+        throw err
+      }
     }
-  })
+  )
 
   // POST /auth/refresh
-  app.post('/auth/refresh', async (req: FastifyRequest, reply: FastifyReply) => {
-    // eslint-disable-next-line security/detect-object-injection
-    const rawToken = req.cookies[COOKIE_NAME]
-    if (!rawToken) {
-      return reply.status(401).send({ error: 'MISSING_REFRESH_TOKEN' })
-    }
-
-    try {
-      const result = await authService.refreshTokens(rawToken)
-      setRefreshCookie(reply, result.refreshToken)
-      return reply.send({ user: result.user, accessToken: result.accessToken })
-    } catch (err) {
-      if (err instanceof AuthError) {
-        clearRefreshCookie(reply)
-        return reply.status(mapAuthError(err)).send({ error: err.code })
+  app.post(
+    '/auth/refresh',
+    AUTH_RATE_LIMIT_CONFIG,
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      // eslint-disable-next-line security/detect-object-injection
+      const rawToken = req.cookies[COOKIE_NAME]
+      if (!rawToken) {
+        return reply.status(401).send({ error: 'MISSING_REFRESH_TOKEN' })
       }
-      throw err
+
+      try {
+        const result = await authService.refreshTokens(rawToken)
+        setRefreshCookie(reply, result.refreshToken)
+        return reply.send({ user: result.user, accessToken: result.accessToken })
+      } catch (err) {
+        if (err instanceof AuthError) {
+          clearRefreshCookie(reply)
+          return reply.status(mapAuthError(err)).send({ error: err.code })
+        }
+        throw err
+      }
     }
-  })
+  )
 
   // POST /auth/logout
-  app.post('/auth/logout', async (req: FastifyRequest, reply: FastifyReply) => {
-    // eslint-disable-next-line security/detect-object-injection
-    const rawToken = req.cookies[COOKIE_NAME]
-    if (rawToken) {
-      await authService.logout(rawToken)
+  app.post(
+    '/auth/logout',
+    AUTH_RATE_LIMIT_CONFIG,
+    async (req: FastifyRequest, reply: FastifyReply) => {
+      // eslint-disable-next-line security/detect-object-injection
+      const rawToken = req.cookies[COOKIE_NAME]
+      if (rawToken) {
+        await authService.logout(rawToken)
+      }
+      clearRefreshCookie(reply)
+      return reply.status(204).send()
     }
-    clearRefreshCookie(reply)
-    return reply.status(204).send()
-  })
+  )
 }
