@@ -19,7 +19,7 @@
     "test:e2e": "turbo test:e2e",
     "clean": "turbo clean && rm -rf node_modules",
     "prepare": "husky",
-    "postinstall": "npm run --workspace=api db:generate-types"
+    "postinstall": "npm run --workspace=@famileconomy/api db:generate-types"
   },
   "dependencies": {
     "react": "^19.0.0",
