@@ -27,6 +27,7 @@ vi.mock('../db/prisma', () => ({
       create: vi.fn(),
     },
     transaction: {
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       findUnique: vi.fn(),
       create: vi.fn(),

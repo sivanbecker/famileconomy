@@ -76,24 +76,24 @@ describe('ImportService', () => {
       vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
     })
 
-    it('returns inserted=1, skipped=0 for a single new Max transaction', async () => {
+    it('returns inserted=1, duplicates=0 for a single new Max transaction', async () => {
       const result = await service.importCsv({
         csv: MAX_SINGLE_ROW,
         filename: 'max.csv',
         accountId: ACCOUNT_ID,
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, skipped: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
     })
 
-    it('returns inserted=1, skipped=0 for a single new Cal transaction', async () => {
+    it('returns inserted=1, duplicates=0 for a single new Cal transaction', async () => {
       const result = await service.importCsv({
         csv: CAL_SINGLE_ROW,
         filename: 'cal.csv',
         accountId: ACCOUNT_ID,
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, skipped: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
     })
 
     it('creates an ImportBatch record', async () => {
@@ -125,7 +125,9 @@ describe('ImportService', () => {
   // ─── Deduplication ─────────────────────────────────────────────────────────
 
   describe('deduplication', () => {
-    it('skips a transaction when dedupe_hash already exists', async () => {
+    const EXISTING_TX_ID = 'existing-tx-uuid'
+
+    beforeEach(() => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
@@ -142,8 +144,12 @@ describe('ImportService', () => {
         rowCount: 1,
         importedAt: new Date(),
       })
-      // Simulate hash collision — findUnique returns an existing transaction
-      vi.mocked(prisma.transaction.findUnique).mockResolvedValue({ id: 'existing-tx' } as never)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('inserts a DUPLICATE transaction (not skips) when dedupe_hash already exists', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
 
       const result = await service.importCsv({
         csv: MAX_SINGLE_ROW,
@@ -152,9 +158,54 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result).toEqual({ inserted: 0, skipped: 1, errors: [] })
-      expect(prisma.transaction.create).not.toHaveBeenCalled()
+      expect(result).toEqual({ inserted: 0, duplicates: 1, errors: [] })
+      expect(prisma.transaction.create).toHaveBeenCalledOnce()
+    })
+
+    it('sets status=DUPLICATE and duplicate_of=<original id> on the inserted row', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        accountId: ACCOUNT_ID,
+        userId: USER_ID,
+      })
+
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'DUPLICATE',
+            duplicateOf: EXISTING_TX_ID,
+          }),
+        })
+      )
+    })
+
+    it('does NOT write an audit log entry for duplicate transactions', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        accountId: ACCOUNT_ID,
+        userId: USER_ID,
+      })
+
       expect(prisma.auditLog.create).not.toHaveBeenCalled()
+    })
+
+    it('returns inserted=1 duplicates=0 when no existing transaction matches', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      const result = await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        accountId: ACCOUNT_ID,
+        userId: USER_ID,
+      })
+
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
     })
   })
 
