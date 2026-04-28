@@ -4,14 +4,16 @@ import { ImportService, ImportError } from '../services/import.service.js'
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5 MB
 
-function mapImportError(err: ImportError): number {
+function mapImportError(err: ImportError): { status: number; message: string } {
   switch (err.code) {
     case 'ACCOUNT_NOT_FOUND':
-      return 404
+      return { status: 404, message: 'Account not found.' }
+    case 'FILE_ALREADY_IMPORTED':
+      return { status: 409, message: 'You already imported this file!' }
     case 'UNKNOWN_FORMAT':
-      return 422
+      return { status: 422, message: 'Unrecognised CSV format.' }
     default:
-      return 500
+      return { status: 500, message: 'Import failed.' }
   }
 }
 
@@ -58,7 +60,8 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
       return reply.send(result)
     } catch (err) {
       if (err instanceof ImportError) {
-        return reply.status(mapImportError(err)).send({ error: err.code })
+        const { status, message } = mapImportError(err)
+        return reply.status(status).send({ error: err.code, message })
       }
       throw err
     }

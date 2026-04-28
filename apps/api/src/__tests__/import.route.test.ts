@@ -165,6 +165,30 @@ describe('POST /import/csv', () => {
     expect(res.statusCode).toBe(404)
   })
 
+  it('returns 409 with message when service throws FILE_ALREADY_IMPORTED', async () => {
+    vi.mocked(ImportService).mockClear()
+    vi.mocked(ImportService).mockImplementation(
+      () =>
+        ({
+          importCsv: vi.fn().mockRejectedValue(new ImportError('FILE_ALREADY_IMPORTED')),
+        }) as never
+    )
+    const localApp = await buildApp()
+    const { body, boundary } = makeMultipartBody(
+      { accountId: ACCOUNT_ID, userId: USER_ID },
+      { name: 'max.csv', content: DUMMY_CSV }
+    )
+    const res = await localApp.inject({
+      method: 'POST',
+      url: '/import/csv',
+      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
+      body,
+    })
+    await localApp.close()
+    expect(res.statusCode).toBe(409)
+    expect(res.json<{ message: string }>().message).toBe('You already imported this file!')
+  })
+
   it('returns 422 when service throws UNKNOWN_FORMAT', async () => {
     vi.mocked(ImportService).mockClear()
     vi.mocked(ImportService).mockImplementation(

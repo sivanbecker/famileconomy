@@ -68,6 +68,7 @@ describe('ImportService', () => {
         id: 'batch-1',
         accountId: ACCOUNT_ID,
         filename: 'test.csv',
+        fileHash: null,
         rowCount: 1,
         importedAt: new Date(),
       })
@@ -76,24 +77,24 @@ describe('ImportService', () => {
       vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
     })
 
-    it('returns inserted=1, skipped=0 for a single new Max transaction', async () => {
+    it('returns inserted=1, duplicates=0 for a single new Max transaction', async () => {
       const result = await service.importCsv({
         csv: MAX_SINGLE_ROW,
         filename: 'max.csv',
         accountId: ACCOUNT_ID,
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, skipped: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
     })
 
-    it('returns inserted=1, skipped=0 for a single new Cal transaction', async () => {
+    it('returns inserted=1, duplicates=0 for a single new Cal transaction', async () => {
       const result = await service.importCsv({
         csv: CAL_SINGLE_ROW,
         filename: 'cal.csv',
         accountId: ACCOUNT_ID,
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, skipped: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
     })
 
     it('creates an ImportBatch record', async () => {
@@ -125,7 +126,9 @@ describe('ImportService', () => {
   // ─── Deduplication ─────────────────────────────────────────────────────────
 
   describe('deduplication', () => {
-    it('skips a transaction when dedupe_hash already exists', async () => {
+    const EXISTING_TX_ID = 'existing-tx-uuid'
+
+    beforeEach(() => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
@@ -139,11 +142,16 @@ describe('ImportService', () => {
         id: 'batch-1',
         accountId: ACCOUNT_ID,
         filename: 'test.csv',
+        fileHash: null,
         rowCount: 1,
         importedAt: new Date(),
       })
-      // Simulate hash collision — findUnique returns an existing transaction
-      vi.mocked(prisma.transaction.findUnique).mockResolvedValue({ id: 'existing-tx' } as never)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('inserts a DUPLICATE transaction (not skips) when dedupe_hash already exists', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
 
       const result = await service.importCsv({
         csv: MAX_SINGLE_ROW,
@@ -152,9 +160,54 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result).toEqual({ inserted: 0, skipped: 1, errors: [] })
-      expect(prisma.transaction.create).not.toHaveBeenCalled()
+      expect(result).toEqual({ inserted: 0, duplicates: 1, errors: [] })
+      expect(prisma.transaction.create).toHaveBeenCalledOnce()
+    })
+
+    it('sets status=DUPLICATE and duplicate_of=<original id> on the inserted row', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        accountId: ACCOUNT_ID,
+        userId: USER_ID,
+      })
+
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'DUPLICATE',
+            duplicateOf: EXISTING_TX_ID,
+          }),
+        })
+      )
+    })
+
+    it('does NOT write an audit log entry for duplicate transactions', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        accountId: ACCOUNT_ID,
+        userId: USER_ID,
+      })
+
       expect(prisma.auditLog.create).not.toHaveBeenCalled()
+    })
+
+    it('returns inserted=1 duplicates=0 when no existing transaction matches', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      const result = await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        accountId: ACCOUNT_ID,
+        userId: USER_ID,
+      })
+
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
     })
   })
 
@@ -202,6 +255,61 @@ describe('ImportService', () => {
           userId: USER_ID,
         })
       ).rejects.toMatchObject({ code: 'UNKNOWN_FORMAT' })
+    })
+
+    it('throws ImportError FILE_ALREADY_IMPORTED when the same file was already imported', async () => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue({
+        id: ACCOUNT_ID,
+        userId: USER_ID,
+        name: 'Test',
+        type: 'CREDIT_CARD',
+        currency: 'ILS',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      // Simulate existing batch with same file hash
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue({
+        id: 'batch-old',
+        accountId: ACCOUNT_ID,
+        filename: 'max.csv',
+        fileHash: 'any-hash',
+        rowCount: 1,
+        importedAt: new Date(),
+      } as never)
+
+      await expect(
+        service.importCsv({
+          csv: MAX_SINGLE_ROW,
+          filename: 'max.csv',
+          accountId: ACCOUNT_ID,
+          userId: USER_ID,
+        })
+      ).rejects.toMatchObject({ code: 'FILE_ALREADY_IMPORTED' })
+    })
+
+    it('does not insert any rows when FILE_ALREADY_IMPORTED is thrown', async () => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue({
+        id: ACCOUNT_ID,
+        userId: USER_ID,
+        name: 'Test',
+        type: 'CREDIT_CARD',
+        currency: 'ILS',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue({ id: 'batch-old' } as never)
+
+      await expect(
+        service.importCsv({
+          csv: MAX_SINGLE_ROW,
+          filename: 'max.csv',
+          accountId: ACCOUNT_ID,
+          userId: USER_ID,
+        })
+      ).rejects.toThrow()
+
+      expect(prisma.importBatch.create).not.toHaveBeenCalled()
+      expect(prisma.transaction.create).not.toHaveBeenCalled()
     })
   })
 })

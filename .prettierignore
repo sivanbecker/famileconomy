@@ -4,3 +4,4 @@ dist
 coverage
 .turbo
 *.min.js
+packages/types/src/database.ts
