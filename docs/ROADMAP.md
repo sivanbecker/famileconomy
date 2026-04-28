@@ -116,9 +116,13 @@
 
 - [x] CSV parser: Max (`מקס / לאומי קארד`) — TDD
 - [x] CSV parser: Cal (`כאל`) — TDD
-- [x] Duplicate detection (hash-based dedup per import batch) — TDD
 - [x] Installment grouping (`תשלום 2/6`) — TDD
-- [x] Import API endpoint: `POST /import/csv`
+- [x] Row-level dedup: SHA-256 hash of `accountId|date|amountAgorot|description`; duplicates inserted as `status=DUPLICATE` with `duplicate_of` FK pointing at the original — TDD
+- [x] Batch-level dedup: SHA-256 hash of full file content stored on `import_batches`; re-uploading the same file returns 409 before any rows are processed — TDD
+- [x] `DUPLICATE` / `REVIEWED_OK` enum values + `duplicate_of` self-referential FK on `transactions` (migrations 005, 006)
+- [x] `file_hash` column on `import_batches` with partial unique index (migration 007)
+- [x] Import API endpoint: `POST /import/csv` — returns `{ inserted, duplicates, errors }`
+- [x] `postinstall` hook runs `prisma generate` so CI always has up-to-date enum types
 - [-] BullMQ worker: `csv-import` queue with OTel spans (deferred: sync import sufficient for MVP; easy to add async path later — revisit Phase 9/10)
 - [-] Cloudflare R2 integration for ephemeral CSV storage (deferred: not needed without async worker — revisit Phase 9/10)
 
