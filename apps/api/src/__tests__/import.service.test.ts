@@ -68,6 +68,7 @@ describe('ImportService', () => {
         id: 'batch-1',
         accountId: ACCOUNT_ID,
         filename: 'test.csv',
+        fileHash: null,
         rowCount: 1,
         importedAt: new Date(),
       })
@@ -141,6 +142,7 @@ describe('ImportService', () => {
         id: 'batch-1',
         accountId: ACCOUNT_ID,
         filename: 'test.csv',
+        fileHash: null,
         rowCount: 1,
         importedAt: new Date(),
       })

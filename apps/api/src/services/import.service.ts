@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { prisma } from '../db/prisma.js'
 import { TransactionStatus } from '@prisma/client'
 import { parseMaxCsv } from '../lib/parsers/max-parser.js'
@@ -51,6 +52,13 @@ export class ImportService {
     })
     if (!account) throw new ImportError('ACCOUNT_NOT_FOUND')
 
+    // Batch-level dedup — reject re-upload of the exact same file
+    const fileHash = createHash('sha256').update(csv, 'utf8').digest('hex')
+    const existingBatch = await prisma.importBatch.findFirst({
+      where: { accountId, fileHash },
+    })
+    if (existingBatch) throw new ImportError('FILE_ALREADY_IMPORTED')
+
     // Detect and parse
     const format = this.detectFormat(csv)
     if (!format) throw new ImportError('UNKNOWN_FORMAT')
@@ -59,7 +67,7 @@ export class ImportService {
 
     // Create the import batch record
     const batch = await prisma.importBatch.create({
-      data: { accountId, filename, rowCount: rows.length },
+      data: { accountId, filename, fileHash, rowCount: rows.length },
     })
 
     let inserted = 0
