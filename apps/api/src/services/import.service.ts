@@ -43,8 +43,11 @@ export class ImportService {
   async importCsv(input: ImportCsvInput): Promise<ImportResult> {
     const { csv, filename, accountId, userId } = input
 
-    // Verify the account belongs to this user
-    const account = await prisma.account.findFirst({ where: { id: accountId, userId } })
+    // Verify the account belongs to this user — select only unencrypted columns
+    const account = await prisma.account.findFirst({
+      where: { id: accountId, userId },
+      select: { id: true },
+    })
     if (!account) throw new ImportError('ACCOUNT_NOT_FOUND')
 
     // Detect and parse
