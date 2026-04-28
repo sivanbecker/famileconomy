@@ -15,6 +15,17 @@ vi.mock('../db/prisma', () => ({
       updateMany: vi.fn(),
       delete: vi.fn(),
     },
+    account: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    importBatch: {
+      create: vi.fn(),
+    },
     transaction: {
       findMany: vi.fn(),
       findUnique: vi.fn(),

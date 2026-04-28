@@ -114,13 +114,13 @@
 
 ### 7a — Transaction Import
 
-- [ ] CSV parser: Max (`מקס / לאומי קארד`) — TDD
-- [ ] CSV parser: Cal (`כאל`) — TDD
-- [ ] Duplicate detection (hash-based dedup per import batch) — TDD
-- [ ] Installment grouping (`תשלום 2/6`) — TDD
-- [ ] Import API endpoint: `POST /import/csv`
-- [ ] BullMQ worker: `csv-import` queue with OTel spans
-- [ ] Cloudflare R2 integration for ephemeral CSV storage
+- [x] CSV parser: Max (`מקס / לאומי קארד`) — TDD
+- [x] CSV parser: Cal (`כאל`) — TDD
+- [x] Duplicate detection (hash-based dedup per import batch) — TDD
+- [x] Installment grouping (`תשלום 2/6`) — TDD
+- [x] Import API endpoint: `POST /import/csv`
+- [-] BullMQ worker: `csv-import` queue with OTel spans (deferred: sync import sufficient for MVP; easy to add async path later — revisit Phase 9/10)
+- [-] Cloudflare R2 integration for ephemeral CSV storage (deferred: not needed without async worker — revisit Phase 9/10)
 
 ### 7b — Core UI (Next.js)
 
