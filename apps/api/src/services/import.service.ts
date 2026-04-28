@@ -1,4 +1,5 @@
 import { prisma } from '../db/prisma.js'
+import { TransactionStatus } from '@prisma/client'
 import { parseMaxCsv } from '../lib/parsers/max-parser.js'
 import { parseCalCsv } from '../lib/parsers/cal-parser.js'
 import { computeDedupeHash } from '../lib/parsers/dedup-hash.js'
@@ -8,7 +9,7 @@ import type { ParsedTransaction } from '../lib/parsers/types.js'
 
 export interface ImportResult {
   inserted: number
-  skipped: number
+  duplicates: number
   errors: string[]
 }
 
@@ -62,7 +63,7 @@ export class ImportService {
     })
 
     let inserted = 0
-    let skipped = 0
+    let duplicates = 0
 
     for (const row of rows) {
       const dedupeHash = computeDedupeHash({
@@ -72,51 +73,56 @@ export class ImportService {
         description: row.description,
       })
 
-      // Global dedup — skip if this exact transaction already exists
-      const existing = await prisma.transaction.findUnique({ where: { dedupeHash } })
-      if (existing) {
-        skipped++
-        continue
-      }
+      // Check for an existing transaction with the same hash
+      const existing = await prisma.transaction.findFirst({ where: { dedupeHash } })
 
       // Build the create payload, omitting fields that are null/undefined
       // (exactOptionalPropertyTypes: true forbids assigning undefined to optional fields)
-      await prisma.transaction.create({
-        data: {
-          accountId,
-          importBatchId: batch.id,
-          transactionDate: row.transactionDate,
-          ...(row.chargeDate !== null && { chargeDate: row.chargeDate }),
-          description: Buffer.from(row.description, 'utf-8'),
-          amountAgorot: Buffer.from(row.amountAgorot.toString(), 'utf-8'),
-          originalAmountAgorot: Buffer.from(row.originalAmountAgorot.toString(), 'utf-8'),
-          ...(row.originalCurrency !== 'ILS' && { originalCurrency: row.originalCurrency }),
-          ...(row.category !== null && { category: row.category }),
-          ...(row.cardLastFour !== null && { cardLastFour: row.cardLastFour }),
-          ...(row.installmentNum !== null && { installmentNum: row.installmentNum }),
-          ...(row.installmentOf !== null && { installmentOf: row.installmentOf }),
-          dedupeHash,
-        },
-      })
+      const baseData = {
+        accountId,
+        importBatchId: batch.id,
+        transactionDate: row.transactionDate,
+        ...(row.chargeDate !== null && { chargeDate: row.chargeDate }),
+        description: Buffer.from(row.description, 'utf-8'),
+        amountAgorot: Buffer.from(row.amountAgorot.toString(), 'utf-8'),
+        originalAmountAgorot: Buffer.from(row.originalAmountAgorot.toString(), 'utf-8'),
+        ...(row.originalCurrency !== 'ILS' && { originalCurrency: row.originalCurrency }),
+        ...(row.category !== null && { category: row.category }),
+        ...(row.cardLastFour !== null && { cardLastFour: row.cardLastFour }),
+        ...(row.installmentNum !== null && { installmentNum: row.installmentNum }),
+        ...(row.installmentOf !== null && { installmentOf: row.installmentOf }),
+        dedupeHash,
+      }
 
-      await prisma.auditLog.create({
-        data: {
-          userId,
-          action: 'INSERT',
-          tableName: 'transactions',
-          recordId: dedupeHash,
-          newValues: {
-            accountId,
-            transactionDate: row.transactionDate,
-            description: '[REDACTED]',
-            amountAgorot: '[REDACTED]',
+      if (existing) {
+        // Soft dedup: insert as DUPLICATE pointing at the original.
+        // No audit log — duplicates are system-generated, not user actions.
+        await prisma.transaction.create({
+          data: { ...baseData, status: TransactionStatus.DUPLICATE, duplicateOf: existing.id },
+        })
+        duplicates++
+      } else {
+        await prisma.transaction.create({ data: baseData })
+
+        await prisma.auditLog.create({
+          data: {
+            userId,
+            action: 'INSERT',
+            tableName: 'transactions',
+            recordId: dedupeHash,
+            newValues: {
+              accountId,
+              transactionDate: row.transactionDate,
+              description: '[REDACTED]',
+              amountAgorot: '[REDACTED]',
+            },
           },
-        },
-      })
+        })
 
-      inserted++
+        inserted++
+      }
     }
 
-    return { inserted, skipped, errors: [] }
+    return { inserted, duplicates, errors: [] }
   }
 }
