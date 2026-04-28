@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { parseCalCsv } from '../lib/parsers/cal-parser'
 import type { ParsedTransaction } from '../lib/parsers/types'
 
@@ -163,15 +165,15 @@ describe('parseCalCsv', () => {
   })
 
   describe('full fixture', () => {
-    it('parses all 20 transaction rows from the sample file', async () => {
-      const { readFile } = await import('node:fs/promises')
-      const { resolve } = await import('node:path')
-      const csv = await readFile(
-        resolve(__dirname, '../../../../examples/cal monthly report example.csv'),
-        'utf-8'
-      )
-      const result = parseCalCsv(csv)
-      expect(result).toHaveLength(20)
-    })
+    const fixturePath = resolve(__dirname, '../../../../examples/cal monthly report example.csv')
+    it.skipIf(!existsSync(fixturePath))(
+      'parses all 20 transaction rows from the sample file',
+      async () => {
+        const { readFile } = await import('node:fs/promises')
+        const csv = await readFile(fixturePath, 'utf-8')
+        const result = parseCalCsv(csv)
+        expect(result).toHaveLength(20)
+      }
+    )
   })
 })

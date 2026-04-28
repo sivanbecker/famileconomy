@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { parseMaxCsv } from '../lib/parsers/max-parser'
 import type { ParsedTransaction } from '../lib/parsers/types'
 
@@ -153,15 +155,15 @@ describe('parseMaxCsv', () => {
   })
 
   describe('full fixture', () => {
-    it('parses all 37 transaction rows from the sample file', async () => {
-      const { readFile } = await import('node:fs/promises')
-      const { resolve } = await import('node:path')
-      const csv = await readFile(
-        resolve(__dirname, '../../../../examples/max-monthly-report-example.csv'),
-        'utf-8'
-      )
-      const result = parseMaxCsv(csv)
-      expect(result).toHaveLength(37)
-    })
+    const fixturePath = resolve(__dirname, '../../../../examples/max-monthly-report-example.csv')
+    it.skipIf(!existsSync(fixturePath))(
+      'parses all 37 transaction rows from the sample file',
+      async () => {
+        const { readFile } = await import('node:fs/promises')
+        const csv = await readFile(fixturePath, 'utf-8')
+        const result = parseMaxCsv(csv)
+        expect(result).toHaveLength(37)
+      }
+    )
   })
 })
