@@ -54,7 +54,7 @@ describe('ImportForm', () => {
     await user.upload(input, file)
 
     fireEvent.click(screen.getByRole('button', { name: /ייבא|import/i }))
-    await waitFor(() => expect(screen.getByText(/3|הועלו|יובאו/i)).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/יובאו 3 עסקאות/i)).toBeInTheDocument())
   })
 
   it('shows error message when import returns FILE_ALREADY_IMPORTED', async () => {

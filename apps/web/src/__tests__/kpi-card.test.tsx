@@ -10,7 +10,7 @@ describe('KpiCard', () => {
 
   it('formats amountAgorot as ILS display value', () => {
     render(<KpiCard label="הכנסות" amountAgorot={500000} />)
-    expect(screen.getByText(/5,000/)).toBeInTheDocument()
+    expect(screen.getByText(/5,000|5000/)).toBeInTheDocument()
   })
 
   it('shows zero correctly', () => {

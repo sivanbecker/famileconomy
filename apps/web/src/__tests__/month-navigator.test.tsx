@@ -5,14 +5,14 @@ import { MonthNavigator } from '../components/month-navigator'
 describe('MonthNavigator', () => {
   const baseProps = {
     year: 2026,
-    month: 4,
+    month: 1,
     onPrev: vi.fn(),
     onNext: vi.fn(),
   }
 
   it('displays the month and year in Hebrew format', () => {
     render(<MonthNavigator {...baseProps} />)
-    expect(screen.getByText(/אפריל/)).toBeInTheDocument()
+    expect(screen.getByText(/ינואר/)).toBeInTheDocument()
     expect(screen.getByText(/2026/)).toBeInTheDocument()
   })
 
