@@ -2,7 +2,7 @@
 
 export type AccountType = 'CHECKING' | 'SAVINGS' | 'CREDIT_CARD' | 'CASH'
 
-export type TransactionStatus = 'CLEARED' | 'PENDING'
+export type TransactionStatus = 'CLEARED' | 'PENDING' | 'DUPLICATE' | 'REVIEWED_OK'
 
 export interface User {
   id: string
@@ -57,10 +57,13 @@ export interface Transaction {
   dedupeHash: string | null
   installmentNum: number | null
   installmentOf: number | null
+  duplicateOf: string | null
   createdAt: Date
   account?: Account
   importBatch?: ImportBatch | null
   recurringMatch?: RecurringMatch | null
+  originalTransaction?: Transaction | null
+  duplicates?: Transaction[]
 }
 
 export interface ImportBatch {

@@ -74,6 +74,8 @@ enum AccountType {
 enum TransactionStatus {
   CLEARED
   PENDING
+  DUPLICATE
+  REVIEWED_OK
 
   @@map("transaction_status")
 }
@@ -104,14 +106,17 @@ model Transaction {
   category        String?
   cardLastFour    String?           @map("card_last_four")
   status          TransactionStatus @default(CLEARED)
-  dedupeHash      String?           @unique @map("dedupe_hash")
+  dedupeHash      String?           @map("dedupe_hash")
   installmentNum  Int?              @map("installment_num")
   installmentOf   Int?              @map("installment_of")
+  duplicateOf     String?           @map("duplicate_of")
   createdAt       DateTime          @default(now()) @map("created_at")
 
-  account        Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  importBatch    ImportBatch?   @relation(fields: [importBatchId], references: [id])
-  recurringMatch RecurringMatch?
+  account            Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  importBatch        ImportBatch?   @relation(fields: [importBatchId], references: [id])
+  recurringMatch     RecurringMatch?
+  originalTransaction Transaction?  @relation("DuplicateOf", fields: [duplicateOf], references: [id], onDelete: SetNull)
+  duplicates         Transaction[]  @relation("DuplicateOf")
 
   @@map("transactions")
 }
