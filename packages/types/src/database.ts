@@ -70,6 +70,7 @@ export interface ImportBatch {
   id: string
   accountId: string
   filename: string
+  fileHash: string | null
   rowCount: number
   importedAt: Date
   transactions?: Transaction[]

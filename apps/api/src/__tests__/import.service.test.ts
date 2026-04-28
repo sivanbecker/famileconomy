@@ -254,5 +254,60 @@ describe('ImportService', () => {
         })
       ).rejects.toMatchObject({ code: 'UNKNOWN_FORMAT' })
     })
+
+    it('throws ImportError FILE_ALREADY_IMPORTED when the same file was already imported', async () => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue({
+        id: ACCOUNT_ID,
+        userId: USER_ID,
+        name: 'Test',
+        type: 'CREDIT_CARD',
+        currency: 'ILS',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      // Simulate existing batch with same file hash
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue({
+        id: 'batch-old',
+        accountId: ACCOUNT_ID,
+        filename: 'max.csv',
+        fileHash: 'any-hash',
+        rowCount: 1,
+        importedAt: new Date(),
+      } as never)
+
+      await expect(
+        service.importCsv({
+          csv: MAX_SINGLE_ROW,
+          filename: 'max.csv',
+          accountId: ACCOUNT_ID,
+          userId: USER_ID,
+        })
+      ).rejects.toMatchObject({ code: 'FILE_ALREADY_IMPORTED' })
+    })
+
+    it('does not insert any rows when FILE_ALREADY_IMPORTED is thrown', async () => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue({
+        id: ACCOUNT_ID,
+        userId: USER_ID,
+        name: 'Test',
+        type: 'CREDIT_CARD',
+        currency: 'ILS',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue({ id: 'batch-old' } as never)
+
+      await expect(
+        service.importCsv({
+          csv: MAX_SINGLE_ROW,
+          filename: 'max.csv',
+          accountId: ACCOUNT_ID,
+          userId: USER_ID,
+        })
+      ).rejects.toThrow()
+
+      expect(prisma.importBatch.create).not.toHaveBeenCalled()
+      expect(prisma.transaction.create).not.toHaveBeenCalled()
+    })
   })
 })

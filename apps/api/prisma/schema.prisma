@@ -125,11 +125,13 @@ model ImportBatch {
   id          String   @id @default(uuid())
   accountId   String   @map("account_id")
   filename    String
+  fileHash    String?  @map("file_hash")
   rowCount    Int      @map("row_count")
   importedAt  DateTime @default(now()) @map("imported_at")
 
   transactions Transaction[]
 
+  @@unique([accountId, fileHash])
   @@map("import_batches")
 }
 
