@@ -4,6 +4,7 @@ import { logger, pinoOptions } from './lib/logger.js'
 import { registerSecurityPlugins } from './plugins/security.js'
 import { healthRoutes } from './routes/health.js'
 import { authRoutes } from './routes/auth.js'
+import { importRoutes } from './routes/import.js'
 
 initSentry()
 
@@ -17,6 +18,7 @@ export async function createApp(): Promise<FastifyInstance> {
   await registerSecurityPlugins(app)
   await app.register(healthRoutes)
   await app.register(authRoutes)
+  await app.register(importRoutes)
 
   return app
 }
