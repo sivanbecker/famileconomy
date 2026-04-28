@@ -156,6 +156,7 @@ describe('parseMaxCsv', () => {
 
   describe('full fixture', () => {
     const fixturePath = resolve(__dirname, '../../../../examples/max-monthly-report-example.csv')
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     it.skipIf(!existsSync(fixturePath))(
       'parses all 37 transaction rows from the sample file',
       async () => {

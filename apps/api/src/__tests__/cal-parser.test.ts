@@ -166,6 +166,7 @@ describe('parseCalCsv', () => {
 
   describe('full fixture', () => {
     const fixturePath = resolve(__dirname, '../../../../examples/cal monthly report example.csv')
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
     it.skipIf(!existsSync(fixturePath))(
       'parses all 20 transaction rows from the sample file',
       async () => {
