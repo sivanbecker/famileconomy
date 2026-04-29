@@ -58,7 +58,7 @@ describe('ImportService', () => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
-        name: 'Test Account',
+        name: Buffer.from('Test Account', 'utf-8'),
         type: 'CREDIT_CARD',
         currency: 'ILS',
         createdAt: new Date(),
@@ -132,7 +132,7 @@ describe('ImportService', () => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
-        name: 'Test',
+        name: Buffer.from('Test', 'utf-8'),
         type: 'CREDIT_CARD',
         currency: 'ILS',
         createdAt: new Date(),
@@ -240,7 +240,7 @@ describe('ImportService', () => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
-        name: 'Test',
+        name: Buffer.from('Test', 'utf-8'),
         type: 'CREDIT_CARD',
         currency: 'ILS',
         createdAt: new Date(),
@@ -261,7 +261,7 @@ describe('ImportService', () => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
-        name: 'Test',
+        name: Buffer.from('Test', 'utf-8'),
         type: 'CREDIT_CARD',
         currency: 'ILS',
         createdAt: new Date(),
@@ -291,7 +291,7 @@ describe('ImportService', () => {
       vi.mocked(prisma.account.findFirst).mockResolvedValue({
         id: ACCOUNT_ID,
         userId: USER_ID,
-        name: 'Test',
+        name: Buffer.from('Test', 'utf-8'),
         type: 'CREDIT_CARD',
         currency: 'ILS',
         createdAt: new Date(),

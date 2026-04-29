@@ -40,11 +40,18 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
     }
 
-    const accounts = await prisma.account.findMany({
+    const rows = await prisma.account.findMany({
       where: { userId: parsed.data.userId },
       select: { id: true, name: true, type: true, currency: true },
       orderBy: { createdAt: 'asc' },
     })
+
+    const accounts: AccountRow[] = rows.map(row => ({
+      id: row.id,
+      name: row.name.toString('utf-8'),
+      type: row.type,
+      currency: row.currency,
+    }))
 
     return reply.send({ accounts })
   })
