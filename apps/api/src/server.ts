@@ -5,6 +5,7 @@ import { registerSecurityPlugins } from './plugins/security.js'
 import { healthRoutes } from './routes/health.js'
 import { authRoutes } from './routes/auth.js'
 import { importRoutes } from './routes/import.js'
+import { transactionRoutes } from './routes/transactions.js'
 
 initSentry()
 
@@ -19,6 +20,7 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(healthRoutes)
   await app.register(authRoutes)
   await app.register(importRoutes)
+  await app.register(transactionRoutes)
 
   return app
 }
