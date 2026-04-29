@@ -37,7 +37,7 @@ const NAV_SECTIONS = [
     label: 'תשלומים',
     items: [
       { href: '/dashboard/recurring-payments', label: 'תשלומים קבועים', icon: CreditCard },
-      { href: '/dashboard/import', label: 'כרטיסי אשראי', icon: Upload },
+      { href: '/dashboard/import', label: 'ייבוא דוחות אשראי', icon: Upload },
     ],
   },
   {
