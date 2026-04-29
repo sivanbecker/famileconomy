@@ -31,13 +31,14 @@ export function ImportForm({ userId }: ImportFormProps) {
 
   useEffect(() => {
     apiClient
-      .get<Account[]>('/accounts')
+      .get<{ accounts: Account[] }>('/accounts', { params: { userId } })
       .then(res => {
-        setAccounts(res.data)
-        if (res.data[0]) setSelectedAccountId(res.data[0].id)
+        setAccounts(res.data.accounts)
+        const first = res.data.accounts[0]
+        if (first) setSelectedAccountId(first.id)
       })
       .catch(() => setError('שגיאה בטעינת חשבונות'))
-  }, [])
+  }, [userId])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

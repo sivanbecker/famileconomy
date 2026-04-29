@@ -19,7 +19,7 @@ const MOCK_ACCOUNTS = [
 
 describe('ImportForm', () => {
   beforeEach(() => {
-    vi.mocked(apiClient.get).mockResolvedValue({ data: MOCK_ACCOUNTS })
+    vi.mocked(apiClient.get).mockResolvedValue({ data: { accounts: MOCK_ACCOUNTS } })
     vi.mocked(apiClient.post).mockResolvedValue({
       data: { inserted: 3, duplicates: 0, errors: [] },
     })
