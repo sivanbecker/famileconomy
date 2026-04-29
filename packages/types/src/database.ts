@@ -32,7 +32,7 @@ export interface RefreshToken {
 export interface Account {
   id: string;
   userId: string;
-  name: string;
+  name: Uint8Array;
   type: AccountType;
   currency: string;
   createdAt: Date;

@@ -50,7 +50,7 @@ model RefreshToken {
 model Account {
   id        String   @id @default(uuid())
   userId    String   @map("user_id")
-  name      String
+  name      Bytes
   type      AccountType
   currency  String   @default("ILS")
   createdAt DateTime @default(now()) @map("created_at")

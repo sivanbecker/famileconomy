@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
@@ -13,9 +14,11 @@ import {
   Upload,
   LogOut,
 } from 'lucide-react'
+import { Button } from '@famileconomy/ui'
 import { useAuthStore } from '../../store/auth'
 import { useAuth } from '../../hooks/use-auth'
 import { apiClient } from '../../lib/api'
+import { ImportModal } from '../../components/import-modal'
 
 // ─── Nav structure ────────────────────────────────────────────────────────────
 
@@ -35,10 +38,7 @@ const NAV_SECTIONS = [
   },
   {
     label: 'תשלומים',
-    items: [
-      { href: '/dashboard/recurring-payments', label: 'תשלומים קבועים', icon: CreditCard },
-      { href: '/dashboard/import', label: 'כרטיסי אשראי', icon: Upload },
-    ],
+    items: [{ href: '/dashboard/recurring-payments', label: 'תשלומים קבועים', icon: CreditCard }],
   },
   {
     label: 'עוד',
@@ -57,6 +57,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const user = useAuthStore(s => s.user)
   const clearUser = useAuthStore(s => s.clearUser)
   const pathname = usePathname()
+  const [importOpen, setImportOpen] = useState(false)
 
   async function handleLogout() {
     await apiClient.post('/auth/logout').catch(() => null)
@@ -82,6 +83,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             F
           </span>
           <span className="text-sm font-bold tracking-tight">Famileconomy</span>
+        </div>
+
+        {/* Import button */}
+        <div className="px-3 pb-2">
+          <Button className="w-full justify-start gap-2" onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" />
+            ייבוא דוחות אשראי
+          </Button>
         </div>
 
         {/* Nav */}
@@ -136,6 +145,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* ── Main ── */}
       <main className="flex flex-1 flex-col overflow-hidden">{children}</main>
+
+      {/* ── Import modal ── */}
+      <ImportModal open={importOpen} onClose={() => setImportOpen(false)} userId={user.id} />
     </div>
   )
 }
