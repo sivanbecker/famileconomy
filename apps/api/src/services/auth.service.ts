@@ -18,6 +18,7 @@ export interface RegisterInput {
   email: string
   password: string
   name: string
+  locale?: string
 }
 
 export interface LoginInput {
@@ -26,7 +27,7 @@ export interface LoginInput {
 }
 
 export interface AuthResult {
-  user: { id: string; email: string; name: string }
+  user: { id: string; email: string; name: string; locale: string }
   accessToken: string
   refreshToken: string
 }
@@ -69,7 +70,7 @@ export class AuthService {
     const passwordHash = await argon2.hash(input.password, ARGON2_OPTIONS)
 
     const user = await prisma.user.create({
-      data: { email: input.email, passwordHash, name: input.name },
+      data: { email: input.email, passwordHash, name: input.name, locale: input.locale ?? 'he' },
     })
 
     return this.#issueTokens(user)
@@ -141,7 +142,7 @@ export class AuthService {
   // ─── Private ────────────────────────────────────────────────────────────────
 
   async #issueTokens(
-    user: { id: string; email: string; name: string },
+    user: { id: string; email: string; name: string; locale: string },
     familyId?: string
   ): Promise<AuthResult> {
     const accessToken = jwt.sign({ sub: user.id, email: user.email }, jwtSecret(), {
@@ -162,7 +163,7 @@ export class AuthService {
     })
 
     return {
-      user: { id: user.id, email: user.email, name: user.name },
+      user: { id: user.id, email: user.email, name: user.name, locale: user.locale },
       accessToken,
       refreshToken: rawToken,
     }

@@ -22,11 +22,11 @@ export default function LoginPage() {
 
   async function onSubmit(data: LoginInput) {
     try {
-      const res = await apiClient.post<{ id: string; name: string; locale: 'he' | 'en' }>(
-        '/auth/login',
-        data
-      )
-      setUser(res.data)
+      const res = await apiClient.post<{
+        user: { id: string; name: string; locale: 'he' | 'en' }
+        accessToken: string
+      }>('/auth/login', data)
+      setUser(res.data.user)
       router.push('/dashboard')
     } catch (err) {
       const message =

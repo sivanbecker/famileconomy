@@ -122,6 +122,27 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     }
   )
 
+  // GET /auth/me — returns current user by refreshing the refresh token cookie
+  app.get('/auth/me', async (req: FastifyRequest, reply: FastifyReply) => {
+    // eslint-disable-next-line security/detect-object-injection
+    const rawToken = req.cookies[COOKIE_NAME]
+    if (!rawToken) {
+      return reply.status(401).send({ error: 'UNAUTHENTICATED' })
+    }
+
+    try {
+      const result = await authService.refreshTokens(rawToken)
+      setRefreshCookie(reply, result.refreshToken)
+      return reply.send({ id: result.user.id, name: result.user.name, locale: result.user.locale })
+    } catch (err) {
+      if (err instanceof AuthError) {
+        clearRefreshCookie(reply)
+        return reply.status(401).send({ error: err.code })
+      }
+      throw err
+    }
+  })
+
   // POST /auth/logout
   app.post(
     '/auth/logout',

@@ -25,11 +25,11 @@ export default function RegisterPage() {
 
   async function onSubmit(data: RegisterInput) {
     try {
-      const res = await apiClient.post<{ id: string; name: string; locale: 'he' | 'en' }>(
-        '/auth/register',
-        data
-      )
-      setUser(res.data)
+      const res = await apiClient.post<{
+        user: { id: string; name: string; locale: 'he' | 'en' }
+        accessToken: string
+      }>('/auth/register', data)
+      setUser(res.data.user)
       router.push('/dashboard')
     } catch (err) {
       const message =
