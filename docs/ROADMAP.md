@@ -155,6 +155,7 @@
 
 ## Phase 8 — MVP Features (Mobile)
 
+- [ ] **Before starting mobile:** fix `apps/web/tailwind.config.ts` to import from `@famileconomy/ui/tailwind.config` (package import) instead of the current inlined duplicate — so both web and mobile share a single source of truth for design tokens (web currently has a copy because the `require()` preset approach failed for `.ts` files; the fix is to resolve via the package `exports` map)
 - [ ] Auth screens: Login, Register (Expo Router)
 - [ ] Bottom nav: תמונת מצב | תכנון | [+] | דוחות | עוד
 - [ ] Dashboard screen (KPI cards, recurring status, recent transactions)
