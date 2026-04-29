@@ -139,23 +139,31 @@
 - [x] Dashboard page: topbar, KPI row, chart placeholder panels, recent transactions + recurring placeholder cards
 - [x] CSV import page with account selector and success/error feedback
 - [x] Transaction list with category badges (real data from API)
+- [ ] Category distribution chart (pie/donut by category, Recharts) on dashboard
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm
 
 ### 7c — Recurring Engine
 
-- [ ] Recurring expense definition CRUD
+- [ ] Recurring expense definition CRUD (`POST/GET/PUT/DELETE /recurring`)
 - [ ] Matching engine: recurring ↔ imported transaction — TDD
-- [ ] BullMQ worker: `matching` queue
-- [ ] Monthly budget summary with planned vs actual
+- [ ] Monthly recurring status: `MATCHED` / `PENDING` / `MISSED` per expense per month
+- [ ] Recurring status panel on dashboard (real data from API)
+- [-] BullMQ worker: `matching` queue (deferred: sync matching sufficient for MVP — revisit Phase 9/10)
 
-### 7d — Safe-to-Spend
+### 7d — Expenses Page
+
+- [ ] `GET /transactions` pagination + filtering by category, date range, min/max amount
+- [ ] Expenses page (`/dashboard/expenses`): full transaction list with search, filter, sort
+- [ ] Transaction detail / edit category inline
+
+### 7e — Safe-to-Spend
 
 - [ ] Implement `SafeToSpend` formula — TDD with edge cases
 - [ ] Month-end forecast calculation — TDD
 - [ ] Forecast chart component (actual line + projected dashed)
 
-> **Release gate:** `v0.1.0` — MVP complete: auth, import (Max + Cal), recurring matching, dashboard, safe-to-spend. Deploy to Vercel staging.
+> **Release gate:** `v0.1.0` — MVP complete: auth, import (Max + Cal), recurring matching, dashboard with charts, expenses page, safe-to-spend. Deploy to Vercel staging.
 
 ---
 
