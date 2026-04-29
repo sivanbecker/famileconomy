@@ -5,3 +5,4 @@ coverage
 .turbo
 *.min.js
 packages/types/src/database.ts
+apps/web/next-env.d.ts
