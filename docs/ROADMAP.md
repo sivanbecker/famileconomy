@@ -128,13 +128,19 @@
 
 ### 7b — Core UI (Next.js)
 
-- [ ] Auth pages: Login, Register (Hebrew RTL, i18n keys)
-- [ ] Dashboard layout (right sidebar navigation — RTL)
-- [ ] Month navigator component
-- [ ] 4 KPI cards: יתרה לבזבז / הכנסות / הוצאות / מאזן
-- [ ] Transaction list with category badges
-- [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳)
-- [ ] CSV import flow (upload → preview → confirm)
+- [x] Auth pages: Login, Register (Hebrew RTL, Zod validation)
+- [x] Axios API client with 401 interceptor → redirect to `/login`
+- [x] Zustand auth store (`id`, `name`, `locale`) — hydrated via `GET /auth/me` on mount
+- [x] `GET /auth/me` API endpoint (rotates refresh token cookie, returns user)
+- [x] Dashboard layout: RTL sidebar with logo, grouped nav sections, active state, user avatar + logout
+- [x] Month navigator component (Hebrew month names, future-month guard)
+- [x] 4 KPI cards with icon, display-size amount, variant colours, budget sublabel
+- [x] Design system wired end-to-end: `postcss.config.mjs` + inlined Tailwind tokens → dark "Obsidian Wealth" theme renders correctly
+- [x] Dashboard page: topbar, KPI row, chart placeholder panels, recent transactions + recurring placeholder cards
+- [x] CSV import page with account selector and success/error feedback
+- [ ] Transaction list with category badges (real data from API)
+- [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
+- [ ] CSV import flow: preview before confirm
 
 ### 7c — Recurring Engine
 
