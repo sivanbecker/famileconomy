@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import { Heebo } from 'next/font/google'
-import '@famileconomy/ui/globals.css'
 import './globals.css'
 
 const heebo = Heebo({ subsets: ['hebrew', 'latin'], variable: '--font-heebo' })
