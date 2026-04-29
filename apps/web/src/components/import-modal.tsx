@@ -13,6 +13,7 @@ import {
 import { Button, Input } from '@famileconomy/ui'
 import { Upload, AlertCircle } from 'lucide-react'
 import { apiClient } from '../lib/api'
+import { useAuth } from '../hooks/use-auth'
 import { toast } from './toast'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ interface ImportModalProps {
 
 export function ImportModal({ open, onClose, userId }: ImportModalProps) {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const [provider, setProvider] = useState<Provider>('MAX')
   const [loading, setLoading] = useState(false)
@@ -79,6 +81,7 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
       toast(parts.join(' · '), 'success')
 
       await queryClient.invalidateQueries({ queryKey: ['transactions'] })
+      await queryClient.invalidateQueries({ queryKey: ['accounts', user?.id ?? userId] })
 
       handleClose()
     } catch (err) {

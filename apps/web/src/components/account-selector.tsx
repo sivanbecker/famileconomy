@@ -12,9 +12,11 @@ export function AccountSelector({ userId }: AccountSelectorProps) {
   const { data: accounts = [], isLoading } = useAccounts(userId)
   const { activeAccountId, setActiveAccountId } = useAccountStore()
 
-  // Auto-select the first account when accounts load and nothing is selected
+  // Auto-select first account when none is selected or the stored id is no longer valid
   useEffect(() => {
-    if (!activeAccountId && accounts.length > 0) {
+    if (accounts.length === 0) return
+    const validId = accounts.find(a => a.id === activeAccountId)?.id
+    if (!validId) {
       const first = accounts[0]
       if (first) setActiveAccountId(first.id)
     }
