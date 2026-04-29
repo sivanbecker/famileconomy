@@ -138,7 +138,7 @@
 - [x] Design system wired end-to-end: `postcss.config.mjs` + inlined Tailwind tokens → dark "Obsidian Wealth" theme renders correctly
 - [x] Dashboard page: topbar, KPI row, chart placeholder panels, recent transactions + recurring placeholder cards
 - [x] CSV import page with account selector and success/error feedback
-- [ ] Transaction list with category badges (real data from API)
+- [~] Transaction list with category badges (real data from API)
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm
 
