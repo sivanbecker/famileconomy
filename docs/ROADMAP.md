@@ -161,9 +161,10 @@
 
 ### 7d — Expenses Page
 
-- [ ] `GET /transactions` pagination + filtering by category, date range, min/max amount
-- [ ] Expenses page (`/dashboard/expenses`): full transaction list with search, filter, sort
-- [ ] Transaction detail / edit category inline
+- [x] `GET /transactions` pagination + filtering by category, date range, min/max amount
+- [x] Expenses page (`/dashboard/expenses`): full transaction list with search, filter, sort
+- [x] Transaction detail / edit category inline
+- [x] Anomaly highlighting (transactions > 2× category average)
 
 ### 7e — Safe-to-Spend
 
