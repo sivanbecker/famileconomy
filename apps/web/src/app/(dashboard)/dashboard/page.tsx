@@ -18,12 +18,19 @@ export default function DashboardPage() {
   const { user } = useAuth()
   const { activeAccountId } = useAccountStore()
 
+  const userId = user?.id
   const { data: transactions = [], isLoading: txLoading } = useTransactions(
     activeAccountId,
     year,
-    month
+    month,
+    userId
   )
-  const { data: summary, isLoading: summaryLoading } = useMonthSummary(activeAccountId, year, month)
+  const { data: summary, isLoading: summaryLoading } = useMonthSummary(
+    activeAccountId,
+    year,
+    month,
+    userId
+  )
 
   function handlePrev() {
     if (month === 1) {

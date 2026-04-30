@@ -7,11 +7,16 @@ const userQuerySchema = z.object({
   userId: z.string().uuid(),
 })
 
-const querySchema = z.object({
-  accountId: z.string().uuid(),
-  year: z.coerce.number().int().min(2000).max(2100),
-  month: z.coerce.number().int().min(1).max(12),
-})
+const querySchema = z
+  .object({
+    accountId: z.string().uuid().optional(),
+    userId: z.string().uuid().optional(),
+    year: z.coerce.number().int().min(2000).max(2100),
+    month: z.coerce.number().int().min(1).max(12),
+  })
+  .refine(d => d.accountId !== undefined || d.userId !== undefined, {
+    message: 'Either accountId or userId must be provided',
+  })
 
 export interface TransactionRow {
   id: string
@@ -65,14 +70,30 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
     }
 
-    const { accountId, year, month } = parsed.data
+    const { accountId, userId, year, month } = parsed.data
 
     const startDate = new Date(year, month - 1, 1)
     const endDate = new Date(year, month, 1) // exclusive upper bound
 
+    // Resolve the set of account IDs to query
+    let accountIdFilter: { accountId: string } | { accountId: { in: string[] } }
+    if (accountId !== undefined) {
+      accountIdFilter = { accountId }
+    } else if (userId !== undefined) {
+      const userAccounts = await prisma.account.findMany({
+        where: { userId },
+        select: { id: true },
+      })
+      if (userAccounts.length === 0) return reply.send({ transactions: [] })
+      accountIdFilter = { accountId: { in: userAccounts.map(a => a.id) } }
+    } else {
+      // Zod refine rejects this case before we get here
+      return reply.status(400).send({ error: 'VALIDATION_ERROR' })
+    }
+
     const rows = await prisma.transaction.findMany({
       where: {
-        accountId,
+        ...accountIdFilter,
         status: { in: [TransactionStatus.CLEARED, TransactionStatus.REVIEWED_OK] },
         OR: [
           // Transactions with a charge date (CAL installments etc.) — filter by billing month

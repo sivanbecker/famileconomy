@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { apiClient } from '../lib/api'
 import { summarizeMonth } from '@famileconomy/utils'
 import type { MonthSummary } from '@famileconomy/utils'
+import { ALL_ACCOUNTS } from '../store/account'
 
 export interface Transaction {
   id: string
@@ -21,26 +22,33 @@ interface TransactionsResponse {
   transactions: Transaction[]
 }
 
-export function useTransactions(accountId: string | null, year: number, month: number) {
+export function useTransactions(
+  accountId: string | null,
+  year: number,
+  month: number,
+  userId?: string
+) {
+  const isAll = accountId === ALL_ACCOUNTS
+  const enabled = isAll ? !!userId : !!accountId
+
   return useQuery<Transaction[]>({
-    queryKey: ['transactions', accountId, year, month],
+    queryKey: ['transactions', accountId, year, month, userId],
     queryFn: async () => {
-      if (!accountId) return []
-      const res = await apiClient.get<TransactionsResponse>('/transactions', {
-        params: { accountId, year, month },
-      })
+      const params = isAll ? { userId, year, month } : { accountId, year, month }
+      const res = await apiClient.get<TransactionsResponse>('/transactions', { params })
       return res.data.transactions
     },
-    enabled: !!accountId,
+    enabled,
   })
 }
 
 export function useMonthSummary(
   accountId: string | null,
   year: number,
-  month: number
+  month: number,
+  userId?: string
 ): { data: MonthSummary; isLoading: boolean } {
-  const { data: transactions = [], isLoading } = useTransactions(accountId, year, month)
+  const { data: transactions = [], isLoading } = useTransactions(accountId, year, month, userId)
 
   return {
     data: summarizeMonth(transactions),
