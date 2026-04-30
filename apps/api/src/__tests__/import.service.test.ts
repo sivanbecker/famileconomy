@@ -217,6 +217,22 @@ describe('ImportService', () => {
       expect(prisma.auditLog.create).toHaveBeenCalled()
     })
 
+    it('persists chargeDate from the CAL billing header on each transaction', async () => {
+      await service.importCsv({
+        csv: CAL_SINGLE_ROW,
+        filename: 'cal.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            chargeDate: new Date('2026-05-10'),
+          }),
+        })
+      )
+    })
+
     it('handles a MAX file with two distinct cards — one batch per card', async () => {
       vi.mocked(prisma.importBatch.create)
         .mockResolvedValueOnce({ ...MOCK_BATCH, id: 'batch-5432', accountId: ACCOUNT_ID })

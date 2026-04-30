@@ -115,10 +115,25 @@ export function extractCalCardIdentifiers(csv: string): string[] {
   return [match[1] as string]
 }
 
+// ─── Charge date extraction ────────────────────────────────────────────────────
+
+// CAL billing line pattern: "עסקאות לחיוב ב-DD/MM/YYYY: …"
+const CHARGE_DATE_RE = /עסקאות לחיוב ב-(\d{2})\/(\d{2})\/(\d{4})/
+
+function extractChargeDate(csv: string): Date | null {
+  const match = CHARGE_DATE_RE.exec(csv)
+  if (!match) return null
+  const [, dd, mm, yyyy] = match
+  const date = new Date(`${yyyy as string}-${mm as string}-${dd as string}`)
+  return isNaN(date.getTime()) ? null : date
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 export function parseCalCsv(csv: string): ParsedTransaction[] {
   if (!csv.trim()) throw new Error('CSV is empty')
+
+  const chargeDate = extractChargeDate(csv)
 
   // Cal column headers span two physical lines because each header cell
   // contains a quoted embedded newline (e.g. `"תאריך\nעסקה"`).
@@ -180,7 +195,7 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
 
     results.push({
       transactionDate: txDate,
-      chargeDate: null,
+      chargeDate,
       description,
       amountAgorot,
       originalAmountAgorot,

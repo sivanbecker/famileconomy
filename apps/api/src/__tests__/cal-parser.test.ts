@@ -70,9 +70,32 @@ describe('parseCalCsv', () => {
       expect(result[0]?.transactionDate).toEqual(new Date('2026-04-09'))
     })
 
-    it('sets chargeDate to null (Cal does not export a charge date column)', () => {
+    it('sets chargeDate from the billing header line for all transactions', () => {
+      // HEADER fixture has "עסקאות לחיוב ב-10/05/2026" → chargeDate = 2026-05-10
       const csv = makeCsv('24/4/26,א.י קמעונאות מזון,₪ 264.62,₪ 264.62,רגילה,מזון ומשקאות,')
       const result = parseCalCsv(csv)
+      expect(result[0]?.chargeDate).toEqual(new Date('2026-05-10'))
+    })
+
+    it('sets chargeDate on installment rows whose transactionDate is in a prior month', () => {
+      // This is the key scenario: the purchase was in Jan but it belongs to the May billing cycle
+      const csv = makeCsv(
+        '22/1/26,אושר עד פתח תקווה,₪ 862.57,₪ 215.60,תשלומים,מזון ומשקאות,תשלום 4 מתוך 4'
+      )
+      const result = parseCalCsv(csv)
+      const tx = result[0] as ParsedTransaction
+      expect(tx.transactionDate).toEqual(new Date('2026-01-22'))
+      expect(tx.chargeDate).toEqual(new Date('2026-05-10'))
+    })
+
+    it('sets chargeDate to null when the billing header line is missing', () => {
+      const csvNoHeader =
+        `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-1234,,,,,,\n` +
+        `,,,,,,\n` +
+        `"תאריך\nעסקה",שם בית עסק,"סכום\nעסקה","סכום\nחיוב","סוג\nעסקה",ענף,הערות\n` +
+        `24/4/26,א.י קמעונאות מזון,₪ 264.62,₪ 264.62,רגילה,מזון ומשקאות,\n` +
+        `,,,,,,`
+      const result = parseCalCsv(csvNoHeader)
       expect(result[0]?.chargeDate).toBeNull()
     })
 
