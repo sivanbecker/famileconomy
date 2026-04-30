@@ -10,6 +10,7 @@ export interface User {
   passwordHash: string;
   name: string;
   locale: string;
+  googleRefreshToken: Uint8Array | null;
   createdAt: Date;
   updatedAt: Date;
   accounts?: Account[];
