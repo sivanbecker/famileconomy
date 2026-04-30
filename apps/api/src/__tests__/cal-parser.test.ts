@@ -51,9 +51,27 @@ describe('parseCalCsv', () => {
     })
 
     it('falls back to transaction amount when charge amount is empty (pending)', () => {
-      const csv = makeCsv('26/4/26,פרשמרקט,₪ 192.67,,רכישה רגילה,מזון ומשקאות,עסקה בקליטה')
+      const csv = makeCsv('29/4/26,מאפיית בראשית,₪ 35.00,,רכישה רגילה,מסעדות,עסקה בקליטה')
       const result = parseCalCsv(csv)
-      expect(result[0]?.amountAgorot).toBe(19267)
+      expect(result[0]?.amountAgorot).toBe(3500)
+    })
+
+    it('sets isPending=true when הערות contains "עסקה בקליטה"', () => {
+      const csv = makeCsv('29/4/26,מאפיית בראשית,₪ 35.00,,רכישה רגילה,מסעדות,עסקה בקליטה')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.isPending).toBe(true)
+    })
+
+    it('sets isPending=false for a normal cleared transaction', () => {
+      const csv = makeCsv('24/4/26,א.י קמעונאות מזון,₪ 264.62,₪ 264.62,רגילה,מזון ומשקאות,')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.isPending).toBe(false)
+    })
+
+    it('sets chargeDate=null for pending rows (no billing date yet)', () => {
+      const csv = makeCsv('29/4/26,מאפיית בראשית,₪ 35.00,,רכישה רגילה,מסעדות,עסקה בקליטה')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.chargeDate).toBeNull()
     })
 
     it('parses originalAmountAgorot from the transaction amount column', () => {

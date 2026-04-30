@@ -197,25 +197,60 @@ export class ImportService {
           data: { ...baseData, status: TransactionStatus.DUPLICATE, duplicateOf: existing.id },
         })
         duplicates++
+      } else if (row.isPending) {
+        await prisma.transaction.create({
+          data: { ...baseData, status: TransactionStatus.PENDING },
+        })
+        inserted++
       } else {
-        await prisma.transaction.create({ data: baseData })
-
-        await prisma.auditLog.create({
-          data: {
-            userId,
-            action: 'INSERT',
-            tableName: 'transactions',
-            recordId: dedupeHash,
-            newValues: {
-              accountId,
-              transactionDate: row.transactionDate,
-              description: '[REDACTED]',
-              amountAgorot: '[REDACTED]',
-            },
+        // Check if this cleared row settles an existing PENDING transaction
+        // (same account + description + exact amount, previously in limbo)
+        const pendingMatch = await prisma.transaction.findFirst({
+          where: {
+            accountId,
+            description: Buffer.from(row.description, 'utf-8'),
+            amountAgorot: Buffer.from(row.amountAgorot.toString(), 'utf-8'),
+            status: TransactionStatus.PENDING,
           },
+          select: { id: true },
         })
 
-        inserted++
+        if (pendingMatch) {
+          await prisma.transaction.update({
+            where: { id: pendingMatch.id },
+            data: {
+              status: TransactionStatus.CLEARED,
+              ...(row.chargeDate !== null && { chargeDate: row.chargeDate }),
+            },
+          })
+          await prisma.transaction.create({
+            data: {
+              ...baseData,
+              status: TransactionStatus.DUPLICATE,
+              duplicateOf: pendingMatch.id,
+            },
+          })
+          duplicates++
+        } else {
+          await prisma.transaction.create({ data: baseData })
+
+          await prisma.auditLog.create({
+            data: {
+              userId,
+              action: 'INSERT',
+              tableName: 'transactions',
+              recordId: dedupeHash,
+              newValues: {
+                accountId,
+                transactionDate: row.transactionDate,
+                description: '[REDACTED]',
+                amountAgorot: '[REDACTED]',
+              },
+            },
+          })
+
+          inserted++
+        }
       }
     }
 

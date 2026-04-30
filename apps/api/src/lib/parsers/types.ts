@@ -9,4 +9,5 @@ export interface ParsedTransaction {
   cardLastFour: string | null
   installmentNum: number | null
   installmentOf: number | null
+  isPending: boolean
 }

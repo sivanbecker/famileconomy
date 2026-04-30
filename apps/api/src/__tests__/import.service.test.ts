@@ -50,6 +50,28 @@ const CAL_SINGLE_ROW_CRLF =
   `,,,,,,\r\n` +
   `את המידע המלא,,,,,,`
 
+// CAL file containing one pending ("עסקה בקליטה") row
+const CAL_PENDING_ROW =
+  `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-1234,,,,,,\n` +
+  `,,,,,,\n` +
+  `"עסקאות לחיוב ב-10/05/2026: 35.00 ₪",,,,,,\n` +
+  `עסקאות בתהליך קליטה 35.00 ₪,,,,,,\n` +
+  `"תאריך\nעסקה",שם בית עסק,"סכום\nעסקה","סכום\nחיוב","סוג\nעסקה",ענף,הערות\n` +
+  `29/4/26,מאפיית בראשית,₪ 35.00,,רכישה רגילה,מסעדות,עסקה בקליטה\n` +
+  `,,,,,,\n` +
+  `את המידע המלא,,,,,,`
+
+// Next month's CAL file — same merchant/amount, now fully cleared
+const CAL_CLEARED_ROW =
+  `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-1234,,,,,,\n` +
+  `,,,,,,\n` +
+  `"עסקאות לחיוב ב-10/06/2026: 35.00 ₪",,,,,,\n` +
+  `עסקאות בתהליך קליטה 0 ₪,,,,,,\n` +
+  `"תאריך\nעסקה",שם בית עסק,"סכום\nעסקה","סכום\nחיוב","סוג\nעסקה",ענף,הערות\n` +
+  `29/4/26,מאפיית בראשית,₪ 35.00,₪ 35.00,רגילה,מסעדות,\n` +
+  `,,,,,,\n` +
+  `את המידע המלא,,,,,,`
+
 const MOCK_ACCOUNT = {
   id: ACCOUNT_ID,
   userId: USER_ID,
@@ -421,6 +443,103 @@ describe('ImportService', () => {
 
       expect(prisma.importBatch.create).not.toHaveBeenCalled()
       expect(prisma.transaction.create).not.toHaveBeenCalled()
+    })
+  })
+
+  // ─── Pending transaction handling ─────────────────────────────────────────
+
+  describe('pending transactions', () => {
+    beforeEach(() => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.account.create).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.create).mockResolvedValue(MOCK_BATCH)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('inserts a pending CAL row with status=PENDING', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      await service.importCsv({
+        csv: CAL_PENDING_ROW,
+        filename: 'cal-may.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ status: 'PENDING' }),
+        })
+      )
+    })
+
+    it('promotes an existing PENDING row to CLEARED when the settled version arrives', async () => {
+      const PENDING_TX_ID = 'pending-tx-uuid'
+      // dedup hash check: no exact hash match (different chargeDate changes nothing in hash)
+      vi.mocked(prisma.transaction.findFirst)
+        // first call: dedupe hash lookup → no match (different billing month)
+        .mockResolvedValueOnce(null)
+        // second call: pending lookup → finds the existing PENDING row
+        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
+
+      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
+
+      await service.importCsv({
+        csv: CAL_CLEARED_ROW,
+        filename: 'cal-jun.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      expect(prisma.transaction.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: PENDING_TX_ID },
+          data: expect.objectContaining({ status: 'CLEARED' }),
+        })
+      )
+    })
+
+    it('marks the new cleared row as DUPLICATE of the promoted transaction', async () => {
+      const PENDING_TX_ID = 'pending-tx-uuid'
+      vi.mocked(prisma.transaction.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
+      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
+
+      await service.importCsv({
+        csv: CAL_CLEARED_ROW,
+        filename: 'cal-jun.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            status: 'DUPLICATE',
+            duplicateOf: PENDING_TX_ID,
+          }),
+        })
+      )
+    })
+
+    it('counts a pending promotion as inserted=0, duplicates=1', async () => {
+      const PENDING_TX_ID = 'pending-tx-uuid'
+      vi.mocked(prisma.transaction.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
+      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
+
+      const result = await service.importCsv({
+        csv: CAL_CLEARED_ROW,
+        filename: 'cal-jun.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      expect(result).toEqual({ inserted: 0, duplicates: 1, errors: [] })
     })
   })
 

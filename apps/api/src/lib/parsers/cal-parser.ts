@@ -192,10 +192,11 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
     const originalCurrency = txAmountParsed.currency
 
     const installment = parseInstallmentNote(notes)
+    const isPending = notes.includes('עסקה בקליטה')
 
     results.push({
       transactionDate: txDate,
-      chargeDate,
+      chargeDate: isPending ? null : chargeDate,
       description,
       amountAgorot,
       originalAmountAgorot,
@@ -204,6 +205,7 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
       cardLastFour: null,
       installmentNum: installment?.num ?? null,
       installmentOf: installment?.of ?? null,
+      isPending,
     })
   }
 
