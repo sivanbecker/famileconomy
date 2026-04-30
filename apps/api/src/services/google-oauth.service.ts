@@ -54,7 +54,10 @@ export class GoogleOAuthService {
     const parts = state.split(':')
     if (parts.length !== 2) throw new GoogleOAuthError('STATE_MISMATCH')
 
-    const [userId, providedSignature] = parts
+    const userId = parts[0]
+    const providedSignature = parts[1]
+
+    if (!userId || !providedSignature) throw new GoogleOAuthError('STATE_MISMATCH')
 
     const hmac = createHmac('sha256', jwtSecret())
     hmac.update(userId)
