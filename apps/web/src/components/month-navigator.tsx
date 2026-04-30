@@ -26,10 +26,6 @@ interface MonthNavigatorProps {
 }
 
 export function MonthNavigator({ year, month, onPrev, onNext }: MonthNavigatorProps) {
-  const now = new Date()
-  const isCurrentOrFuture =
-    year > now.getFullYear() || (year === now.getFullYear() && month >= now.getMonth() + 1)
-
   const monthName = HEBREW_MONTHS[month - 1]
 
   return (
@@ -39,7 +35,6 @@ export function MonthNavigator({ year, month, onPrev, onNext }: MonthNavigatorPr
         size="icon"
         aria-label="חודש הבא"
         onClick={onNext}
-        disabled={isCurrentOrFuture}
         className="h-7 w-7 text-muted-foreground hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />

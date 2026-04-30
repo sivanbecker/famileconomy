@@ -133,13 +133,16 @@
 - [x] Zustand auth store (`id`, `name`, `locale`) — hydrated via `GET /auth/me` on mount
 - [x] `GET /auth/me` API endpoint (rotates refresh token cookie, returns user)
 - [x] Dashboard layout: RTL sidebar with logo, grouped nav sections, active state, user avatar + logout
-- [x] Month navigator component (Hebrew month names, future-month guard)
+- [x] Month navigator component (Hebrew month names, no future-month cap — billing cycles can be ahead of calendar date)
 - [x] 4 KPI cards with icon, display-size amount, variant colours, budget sublabel
 - [x] Design system wired end-to-end: `postcss.config.mjs` + inlined Tailwind tokens → dark "Obsidian Wealth" theme renders correctly
 - [x] Dashboard page: topbar, KPI row, chart placeholder panels, recent transactions + recurring placeholder cards
 - [x] CSV import page with account selector and success/error feedback
 - [x] Transaction list with category badges (real data from API)
 - [x] Auto-create accounts on import: extract card identifiers from parsers, findOrCreateAccount in service, provider radio in modal
+- [x] CAL: parse charge date from billing header; filter transactions by chargeDate so installments from prior months appear in the correct billing month
+- [x] CAL: detect CRLF line endings inside quoted column headers (Windows exports)
+- [x] CAL: detect "עסקה בקליטה" → store as PENDING; auto-promote to CLEARED when settled version arrives in a later statement
 - [ ] Category distribution chart (pie/donut by category, Recharts) on dashboard
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm
