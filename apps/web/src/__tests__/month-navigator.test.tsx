@@ -30,9 +30,9 @@ describe('MonthNavigator', () => {
     expect(onNext).toHaveBeenCalledOnce()
   })
 
-  it('disables next button when current month is today or later', () => {
+  it('next button is always enabled — billing cycles can be ahead of the current calendar month', () => {
     const now = new Date()
     render(<MonthNavigator {...baseProps} year={now.getFullYear()} month={now.getMonth() + 1} />)
-    expect(screen.getByRole('button', { name: /next|חודש הבא|הבא/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /next|חודש הבא|הבא/i })).not.toBeDisabled()
   })
 })
