@@ -103,6 +103,18 @@ function splitCsvLine(line: string): string[] {
   return fields
 }
 
+// ─── Card identifier extraction ───────────────────────────────────────────────
+
+// CAL header line 1 pattern: "…המסתיים ב-XXXX"
+const CARD_SUFFIX_RE = /המסתיים ב-(\d{4})/
+
+export function extractCalCardIdentifiers(csv: string): string[] {
+  const firstLine = csv.split('\n')[0] ?? ''
+  const match = CARD_SUFFIX_RE.exec(firstLine)
+  if (!match) throw new Error('CARD_NOT_FOUND')
+  return [match[1] as string]
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 export function parseCalCsv(csv: string): ParsedTransaction[] {

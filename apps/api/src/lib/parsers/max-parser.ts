@@ -47,6 +47,26 @@ function normaliseDescription(raw: string): string {
   return raw.replace(/\s+/g, ' ').trim()
 }
 
+// ─── Card identifier extraction ───────────────────────────────────────────────
+
+export function extractMaxCardIdentifiers(csv: string): string[] {
+  if (!csv.trim()) throw new Error('CSV is empty')
+
+  const lines = csv.split('\n').map(l => l.trimEnd())
+  const headerIdx = lines.findIndex(l => l.startsWith(COLUMN_HEADER_MARKER))
+  if (headerIdx === -1) throw new Error('Max CSV: column header row not found')
+
+  const seen = new Set<string>()
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i] ?? ''
+    if (!line.trim() || line.startsWith('סך הכל') || /^[\d.,]+₪/.test(line)) break
+    const cols = splitCsvLine(line)
+    const card = (cols[COL_CARD_LAST_FOUR] ?? '').trim()
+    if (card) seen.add(card)
+  }
+  return Array.from(seen)
+}
+
 // ─── Parser ───────────────────────────────────────────────────────────────────
 
 /**

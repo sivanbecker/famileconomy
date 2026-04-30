@@ -139,6 +139,7 @@
 - [x] Dashboard page: topbar, KPI row, chart placeholder panels, recent transactions + recurring placeholder cards
 - [x] CSV import page with account selector and success/error feedback
 - [x] Transaction list with category badges (real data from API)
+- [~] Auto-create accounts on import: extract card identifiers from parsers, findOrCreateAccount in service, provider radio in modal
 - [ ] Category distribution chart (pie/donut by category, Recharts) on dashboard
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm

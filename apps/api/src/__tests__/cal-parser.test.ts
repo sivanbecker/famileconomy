@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { parseCalCsv } from '../lib/parsers/cal-parser'
+import { parseCalCsv, extractCalCardIdentifiers } from '../lib/parsers/cal-parser'
 import type { ParsedTransaction } from '../lib/parsers/types'
 
 // ─── Fixture helpers ──────────────────────────────────────────────────────────
@@ -161,6 +161,51 @@ describe('parseCalCsv', () => {
       )
       const result = parseCalCsv(csv)
       expect(result).toHaveLength(1)
+    })
+  })
+
+  describe('extractCalCardIdentifiers', () => {
+    it('extracts the 4-digit suffix from the standard CAL header', () => {
+      const csv = makeCsv('24/4/26,פרשמרקט,₪ 192.67,,רכישה רגילה,מזון ומשקאות,')
+      expect(extractCalCardIdentifiers(csv)).toEqual(['1234'])
+    })
+
+    it('returns an array with one element (CAL files have a single card per file)', () => {
+      const csv = makeCsv('24/4/26,פרשמרקט,₪ 192.67,,רכישה רגילה,מזון ומשקאות,')
+      const ids = extractCalCardIdentifiers(csv)
+      expect(ids).toHaveLength(1)
+    })
+
+    it('extracts a different 4-digit suffix correctly', () => {
+      const altHeader = `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-9999,,,,,,
+,,,,,,
+"עסקאות לחיוב ב-10/05/2026: 3,573.34 ₪",,,,,,
+עסקאות בתהליך קליטה 442.67 ₪,,,,,,
+"תאריך
+עסקה",שם בית עסק,"סכום
+עסקה","סכום
+חיוב","סוג
+עסקה",ענף,הערות
+24/4/26,פרשמרקט,₪ 192.67,,רכישה רגילה,מזון ומשקאות,
+,,,,,,
+את המידע המלא על כל עסקה אפשר למצוא באתר ובאפליקציית כאל. מידע על חיובים בבנק נמצא בתפריט תחת ''סיכום חיובים בבנק'',,,,,,`
+      expect(extractCalCardIdentifiers(altHeader)).toEqual(['9999'])
+    })
+
+    it('throws CARD_NOT_FOUND when the header has no recognisable ב- suffix', () => {
+      const noSuffix = `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי,,,,,,
+,,,,,,
+"תאריך
+עסקה",שם בית עסק,"סכום
+עסקה","סכום
+חיוב","סוג
+עסקה",ענף,הערות
+24/4/26,פרשמרקט,₪ 192.67,,רכישה רגילה,מזון ומשקאות,`
+      expect(() => extractCalCardIdentifiers(noSuffix)).toThrow('CARD_NOT_FOUND')
+    })
+
+    it('throws CARD_NOT_FOUND when the CSV has no header line at all', () => {
+      expect(() => extractCalCardIdentifiers('')).toThrow('CARD_NOT_FOUND')
     })
   })
 

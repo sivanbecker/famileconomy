@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
-import { parseMaxCsv } from '../lib/parsers/max-parser'
+import { parseMaxCsv, extractMaxCardIdentifiers } from '../lib/parsers/max-parser'
 import type { ParsedTransaction } from '../lib/parsers/types'
 
 // ─── Fixture ─────────────────────────────────────────────────────────────────
@@ -151,6 +151,41 @@ describe('parseMaxCsv', () => {
       )
       const result = parseMaxCsv(csv)
       expect(result).toHaveLength(1)
+    })
+  })
+
+  describe('extractMaxCardIdentifiers', () => {
+    it('returns the single card last-four when all rows share one card', () => {
+      const csv = makeCsv('09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,')
+      expect(extractMaxCardIdentifiers(csv)).toEqual(['5432'])
+    })
+
+    it('returns multiple distinct card last-fours when rows span multiple cards', () => {
+      const csv = makeCsv(
+        '09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,',
+        '10-04-2026,סופר-פארם,מזון וצריכה,9999,רגילה,50,₪,50,₪,10-05-2026,,,,,,'
+      )
+      const ids = extractMaxCardIdentifiers(csv)
+      expect(ids).toHaveLength(2)
+      expect(ids).toContain('5432')
+      expect(ids).toContain('9999')
+    })
+
+    it('deduplicates — same card appearing on multiple rows yields one entry', () => {
+      const csv = makeCsv(
+        '09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,',
+        '10-04-2026,סופר-פארם,מזון וצריכה,5432,רגילה,50,₪,50,₪,10-05-2026,,,,,,'
+      )
+      expect(extractMaxCardIdentifiers(csv)).toEqual(['5432'])
+    })
+
+    it('returns empty array when CSV has no data rows', () => {
+      const csv = makeCsv()
+      expect(extractMaxCardIdentifiers(csv)).toEqual([])
+    })
+
+    it('throws when the column header row is missing', () => {
+      expect(() => extractMaxCardIdentifiers('garbage,data\n1,2,3')).toThrow()
     })
   })
 

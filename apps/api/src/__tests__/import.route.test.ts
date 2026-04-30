@@ -45,9 +45,8 @@ function makeMultipartBody(
 }
 
 const DUMMY_CSV = 'date,amount\n2026-04-09,17'
-const ACCOUNT_ID = 'acc-uuid-1'
 const USER_ID = 'user-uuid-1'
-const SUCCESS_RESULT = { inserted: 3, skipped: 1, errors: [] }
+const SUCCESS_RESULT = { inserted: 3, duplicates: 1, errors: [] }
 
 // ─── App factory ──────────────────────────────────────────────────────────────
 
@@ -73,9 +72,9 @@ describe('POST /import/csv', () => {
     await app.close()
   })
 
-  it('returns 200 with inserted/skipped counts on success', async () => {
+  it('returns 200 with inserted/duplicates counts on success', async () => {
     const { body, boundary } = makeMultipartBody(
-      { accountId: ACCOUNT_ID, userId: USER_ID },
+      { provider: 'MAX', userId: USER_ID },
       { name: 'max.csv', content: DUMMY_CSV }
     )
     const res = await app.inject({
@@ -85,15 +84,15 @@ describe('POST /import/csv', () => {
       body,
     })
     expect(res.statusCode).toBe(200)
-    const json = res.json<{ inserted: number; skipped: number; errors: unknown[] }>()
+    const json = res.json<{ inserted: number; duplicates: number; errors: unknown[] }>()
     expect(json.inserted).toBe(3)
-    expect(json.skipped).toBe(1)
+    expect(json.duplicates).toBe(1)
     expect(json.errors).toEqual([])
   })
 
-  it('passes the file content, accountId, userId, and filename to the service', async () => {
+  it('passes the file content, provider, userId, and filename to the service', async () => {
     const { body, boundary } = makeMultipartBody(
-      { accountId: ACCOUNT_ID, userId: USER_ID },
+      { provider: 'MAX', userId: USER_ID },
       { name: 'max.csv', content: DUMMY_CSV }
     )
     await app.inject({
@@ -107,13 +106,13 @@ describe('POST /import/csv', () => {
       expect.objectContaining({
         csv: DUMMY_CSV,
         filename: 'max.csv',
-        accountId: ACCOUNT_ID,
+        provider: 'MAX',
         userId: USER_ID,
       })
     )
   })
 
-  it('returns 400 when accountId field is missing', async () => {
+  it('returns 400 when provider field is missing', async () => {
     const { body, boundary } = makeMultipartBody(
       { userId: USER_ID },
       { name: 'max.csv', content: DUMMY_CSV }
@@ -130,7 +129,7 @@ describe('POST /import/csv', () => {
   it('returns 400 when file field is missing', async () => {
     const boundary = '----TestBoundary12345'
     const rawBody =
-      `--${boundary}\r\nContent-Disposition: form-data; name="accountId"\r\n\r\n${ACCOUNT_ID}\r\n` +
+      `--${boundary}\r\nContent-Disposition: form-data; name="provider"\r\n\r\nMAX\r\n` +
       `--${boundary}\r\nContent-Disposition: form-data; name="userId"\r\n\r\n${USER_ID}\r\n` +
       `--${boundary}--\r\n`
     const res = await app.inject({
@@ -140,29 +139,6 @@ describe('POST /import/csv', () => {
       body: Buffer.from(rawBody, 'utf-8'),
     })
     expect(res.statusCode).toBe(400)
-  })
-
-  it('returns 404 when service throws ACCOUNT_NOT_FOUND', async () => {
-    vi.mocked(ImportService).mockClear()
-    vi.mocked(ImportService).mockImplementation(
-      () =>
-        ({
-          importCsv: vi.fn().mockRejectedValue(new ImportError('ACCOUNT_NOT_FOUND')),
-        }) as never
-    )
-    const localApp = await buildApp()
-    const { body, boundary } = makeMultipartBody(
-      { accountId: 'wrong-acc', userId: USER_ID },
-      { name: 'max.csv', content: DUMMY_CSV }
-    )
-    const res = await localApp.inject({
-      method: 'POST',
-      url: '/import/csv',
-      headers: { 'content-type': `multipart/form-data; boundary=${boundary}` },
-      body,
-    })
-    await localApp.close()
-    expect(res.statusCode).toBe(404)
   })
 
   it('returns 409 with message when service throws FILE_ALREADY_IMPORTED', async () => {
@@ -175,7 +151,7 @@ describe('POST /import/csv', () => {
     )
     const localApp = await buildApp()
     const { body, boundary } = makeMultipartBody(
-      { accountId: ACCOUNT_ID, userId: USER_ID },
+      { provider: 'MAX', userId: USER_ID },
       { name: 'max.csv', content: DUMMY_CSV }
     )
     const res = await localApp.inject({
@@ -189,17 +165,17 @@ describe('POST /import/csv', () => {
     expect(res.json<{ message: string }>().message).toBe('You already imported this file!')
   })
 
-  it('returns 422 when service throws UNKNOWN_FORMAT', async () => {
+  it('returns 422 when service throws FORMAT_MISMATCH', async () => {
     vi.mocked(ImportService).mockClear()
     vi.mocked(ImportService).mockImplementation(
       () =>
         ({
-          importCsv: vi.fn().mockRejectedValue(new ImportError('UNKNOWN_FORMAT')),
+          importCsv: vi.fn().mockRejectedValue(new ImportError('FORMAT_MISMATCH')),
         }) as never
     )
     const localApp = await buildApp()
     const { body, boundary } = makeMultipartBody(
-      { accountId: ACCOUNT_ID, userId: USER_ID },
+      { provider: 'MAX', userId: USER_ID },
       { name: 'bad.csv', content: DUMMY_CSV }
     )
     const res = await localApp.inject({

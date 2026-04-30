@@ -1,12 +1,14 @@
 import { createHash } from 'node:crypto'
 import { prisma } from '../db/prisma.js'
 import { TransactionStatus } from '@prisma/client'
-import { parseMaxCsv } from '../lib/parsers/max-parser.js'
-import { parseCalCsv } from '../lib/parsers/cal-parser.js'
+import { parseMaxCsv, extractMaxCardIdentifiers } from '../lib/parsers/max-parser.js'
+import { parseCalCsv, extractCalCardIdentifiers } from '../lib/parsers/cal-parser.js'
 import { computeDedupeHash } from '../lib/parsers/dedup-hash.js'
 import type { ParsedTransaction } from '../lib/parsers/types.js'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+export type Provider = 'MAX' | 'CAL'
 
 export interface ImportResult {
   inserted: number
@@ -17,7 +19,7 @@ export interface ImportResult {
 export interface ImportCsvInput {
   csv: string
   filename: string
-  accountId: string
+  provider: Provider
   userId: string
 }
 
@@ -42,34 +44,120 @@ export class ImportService {
     return null
   }
 
-  async importCsv(input: ImportCsvInput): Promise<ImportResult> {
-    const { csv, filename, accountId, userId } = input
+  // Idempotent: returns existing account id or creates a new CREDIT_CARD account.
+  async findOrCreateAccount(
+    userId: string,
+    provider: Provider,
+    cardLastFour: string
+  ): Promise<string> {
+    const name = Buffer.from(`${provider} ${cardLastFour}`, 'utf-8')
 
-    // Verify the account belongs to this user — select only unencrypted columns
-    const account = await prisma.account.findFirst({
-      where: { id: accountId, userId },
+    const existing = await prisma.account.findFirst({
+      where: { userId, name },
       select: { id: true },
     })
-    if (!account) throw new ImportError('ACCOUNT_NOT_FOUND')
+    if (existing) return existing.id
 
-    // Batch-level dedup — reject re-upload of the exact same file
-    const fileHash = createHash('sha256').update(csv, 'utf8').digest('hex')
-    const existingBatch = await prisma.importBatch.findFirst({
-      where: { accountId, fileHash },
+    const created = await prisma.account.create({
+      data: { userId, name, type: 'CREDIT_CARD', currency: 'ILS' },
+      select: { id: true },
     })
+
+    await prisma.auditLog.create({
+      data: {
+        userId,
+        action: 'INSERT',
+        tableName: 'accounts',
+        recordId: created.id,
+        newValues: { provider, cardLastFour },
+      },
+    })
+
+    return created.id
+  }
+
+  async importCsv(input: ImportCsvInput): Promise<ImportResult> {
+    const { csv, filename, provider, userId } = input
+
+    // Detect format and validate it matches the stated provider
+    const format = this.detectFormat(csv)
+    const expectedFormat = provider === 'MAX' ? 'max' : 'cal'
+    if (format !== expectedFormat) throw new ImportError('FORMAT_MISMATCH')
+
+    // Batch-level dedup — reject re-upload of the exact same file content
+    const fileHash = createHash('sha256').update(csv, 'utf8').digest('hex')
+    const existingBatch = await prisma.importBatch.findFirst({ where: { fileHash } })
     if (existingBatch) throw new ImportError('FILE_ALREADY_IMPORTED')
 
-    // Detect and parse
-    const format = this.detectFormat(csv)
-    if (!format) throw new ImportError('UNKNOWN_FORMAT')
+    if (format === 'max') {
+      return this.importMaxCsv({ csv, filename, userId, fileHash })
+    } else {
+      return this.importCalCsv({ csv, filename, userId, fileHash })
+    }
+  }
 
-    const rows: ParsedTransaction[] = format === 'max' ? parseMaxCsv(csv) : parseCalCsv(csv)
+  // ─── MAX import ─────────────────────────────────────────────────────────────
 
-    // Create the import batch record
+  private async importMaxCsv(opts: {
+    csv: string
+    filename: string
+    userId: string
+    fileHash: string
+  }): Promise<ImportResult> {
+    const { csv, filename, userId, fileHash } = opts
+    const cardIdentifiers = extractMaxCardIdentifiers(csv)
+    const allRows = parseMaxCsv(csv)
+
+    let inserted = 0
+    let duplicates = 0
+
+    for (const cardLastFour of cardIdentifiers) {
+      const accountId = await this.findOrCreateAccount(userId, 'MAX', cardLastFour)
+      const rows = allRows.filter(r => r.cardLastFour === cardLastFour)
+
+      const batch = await prisma.importBatch.create({
+        data: { accountId, filename, fileHash, rowCount: rows.length },
+      })
+
+      const result = await this.insertRows(rows, accountId, batch.id, userId)
+      inserted += result.inserted
+      duplicates += result.duplicates
+    }
+
+    return { inserted, duplicates, errors: [] }
+  }
+
+  // ─── CAL import ─────────────────────────────────────────────────────────────
+
+  private async importCalCsv(opts: {
+    csv: string
+    filename: string
+    userId: string
+    fileHash: string
+  }): Promise<ImportResult> {
+    const { csv, filename, userId, fileHash } = opts
+    const [cardLastFour] = extractCalCardIdentifiers(csv)
+    if (!cardLastFour) throw new ImportError('CARD_NOT_FOUND')
+
+    const accountId = await this.findOrCreateAccount(userId, 'CAL', cardLastFour)
+    const rows = parseCalCsv(csv)
+
     const batch = await prisma.importBatch.create({
       data: { accountId, filename, fileHash, rowCount: rows.length },
     })
 
+    const result = await this.insertRows(rows, accountId, batch.id, userId)
+    return { inserted: result.inserted, duplicates: result.duplicates, errors: [] }
+  }
+
+  // ─── Row insertion ──────────────────────────────────────────────────────────
+
+  private async insertRows(
+    rows: ParsedTransaction[],
+    accountId: string,
+    importBatchId: string,
+    userId: string
+  ): Promise<{ inserted: number; duplicates: number }> {
     let inserted = 0
     let duplicates = 0
 
@@ -81,14 +169,11 @@ export class ImportService {
         description: row.description,
       })
 
-      // Check for an existing transaction with the same hash
       const existing = await prisma.transaction.findFirst({ where: { dedupeHash } })
 
-      // Build the create payload, omitting fields that are null/undefined
-      // (exactOptionalPropertyTypes: true forbids assigning undefined to optional fields)
       const baseData = {
         accountId,
-        importBatchId: batch.id,
+        importBatchId,
         transactionDate: row.transactionDate,
         ...(row.chargeDate !== null && { chargeDate: row.chargeDate }),
         description: Buffer.from(row.description, 'utf-8'),
@@ -103,8 +188,6 @@ export class ImportService {
       }
 
       if (existing) {
-        // Soft dedup: insert as DUPLICATE pointing at the original.
-        // No audit log — duplicates are system-generated, not user actions.
         await prisma.transaction.create({
           data: { ...baseData, status: TransactionStatus.DUPLICATE, duplicateOf: existing.id },
         })
@@ -131,6 +214,6 @@ export class ImportService {
       }
     }
 
-    return { inserted, duplicates, errors: [] }
+    return { inserted, duplicates }
   }
 }
