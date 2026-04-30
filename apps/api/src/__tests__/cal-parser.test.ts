@@ -117,10 +117,22 @@ describe('parseCalCsv', () => {
       expect(result[0]?.chargeDate).toBeNull()
     })
 
-    it('sets cardLastFour to null (not present per-row in Cal exports)', () => {
+    it('stamps cardLastFour from the CSV header onto every row', () => {
       const csv = makeCsv('24/4/26,א.י קמעונאות מזון,₪ 264.62,₪ 264.62,רגילה,מזון ומשקאות,')
       const result = parseCalCsv(csv)
-      expect(result[0]?.cardLastFour).toBeNull()
+      // HEADER fixture contains "המסתיים ב-1234"
+      expect(result[0]?.cardLastFour).toBe('1234')
+    })
+
+    it('stamps the same cardLastFour on all rows', () => {
+      const csv = makeCsv(
+        '24/4/26,קפה,₪ 15.00,₪ 15.00,רגילה,מזון,',
+        '25/4/26,סופר,₪ 100.00,₪ 100.00,רגילה,מזון,'
+      )
+      const result = parseCalCsv(csv)
+      expect(result).toHaveLength(2)
+      expect(result[0]?.cardLastFour).toBe('1234')
+      expect(result[1]?.cardLastFour).toBe('1234')
     })
   })
 

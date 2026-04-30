@@ -41,6 +41,9 @@ Thumbs.db
 # Claude Code local settings (contains personal permissions)
 .claude/settings.local.json
 
+# Session handoff notes — local only, not for review
+docs/NEXT_SESSION.md
+
 # Expo
 .expo
 

@@ -135,6 +135,15 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
 
   const chargeDate = extractChargeDate(csv)
 
+  // Extract card last four from line 1 ("המסתיים ב-XXXX"); null if absent
+  let cardLastFour: string | null = null
+  try {
+    const ids = extractCalCardIdentifiers(csv)
+    cardLastFour = ids[0] ?? null
+  } catch {
+    // header missing — cardLastFour stays null
+  }
+
   // Cal column headers span two physical lines because each header cell
   // contains a quoted embedded newline (e.g. `"תאריך\nעסקה"`).
   // After RFC-4180 splitting the joined logical lines, col 0 starts with
@@ -202,7 +211,7 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
       originalAmountAgorot,
       originalCurrency,
       category,
-      cardLastFour: null,
+      cardLastFour,
       installmentNum: installment?.num ?? null,
       installmentOf: installment?.of ?? null,
       isPending,
