@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react'
+import { categoryBreakdown } from '@famileconomy/utils'
 import { MonthNavigator } from '../../../components/month-navigator'
 import { KpiCard } from '../../../components/kpi-card'
 import { AccountSelector } from '../../../components/account-selector'
+import { CategoryChart } from '../../../components/category-chart'
 import { TransactionList } from '../../../components/transaction-list'
 import { useAuth } from '../../../hooks/use-auth'
 import { useAccountStore } from '../../../store/account'
@@ -31,6 +33,8 @@ export default function DashboardPage() {
     month,
     userId
   )
+
+  const categorySlices = useMemo(() => categoryBreakdown(transactions), [transactions])
 
   function handlePrev() {
     if (month === 1) {
@@ -94,7 +98,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex min-h-64 flex-col gap-2 rounded-lg bg-surface p-4 shadow-card-md">
           <h2 className="font-semibold">התפלגות הוצאות לפי קטגוריה</h2>
-          <p className="mt-auto text-sm text-muted-foreground">ייבא עסקאות כדי לראות את הגרף.</p>
+          <CategoryChart slices={categorySlices} isLoading={txLoading} />
         </div>
         <div className="flex min-h-64 flex-col gap-2 rounded-lg bg-surface p-4 shadow-card-md">
           <h2 className="font-semibold">צפי להוצאות עד סוף החודש</h2>

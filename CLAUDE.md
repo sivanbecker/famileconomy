@@ -268,7 +268,7 @@ src/
 - Commit `.env.local` or any file containing secrets.
 - Add `console.log` with sensitive data (amounts, PII, tokens).
 - Skip quality gates because "it's a small change".
-- Include Claude attribution in PR descriptions.
+- Include Claude attribution in PR descriptions or commit messages — no "Co-Authored-By: Claude", "Generated with Claude Code", or any similar lines.
 - Use bcrypt or SHA-256 for password hashing — always Argon2id.
 - Reuse refresh tokens — they are single-use and must be rotated.
 - Mutate financial data without writing an audit log entry.
