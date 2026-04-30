@@ -51,6 +51,39 @@ Rows with `"עסקה בקליטה"` in הערות are in-flight with the credit 
 
 ---
 
+## Known bugs to fix next
+
+### Bug 1 — MAX refund/cancellation inflates הוצאות total
+
+**Symptom:** UI shows ~5009₪ total for MAX cards; CSV footer says 4843.61₪.
+
+**Root cause:** `summarizeMonth` buckets all positive amounts as expenses and all negative amounts as income. A cancellation row (`ביטול עסקה`) has a negative `סכום חיוב` (e.g. -176₪), so it's counted as income rather than as a reduction of expenses. This inflates the expenses KPI by the absolute value of the refund.
+
+**Fix:** Credit card refunds/cancellations are reversals of debits — not income. Two options:
+
+- **Option A (simple):** In `summarizeMonth`, treat negative amounts on transactions as expense reductions (subtract from `expensesAgorot`), not income. Income would need a separate explicit mechanism (salary deposit etc.).
+- **Option B (correct but more work):** Add a `transactionType` field (`DEBIT` / `CREDIT` / `REFUND`) and route accordingly.
+- **Recommendation:** Option A for now. Confirm with Sivan before implementing.
+
+**Files to touch:** `packages/utils/src/month-summary.ts`, its tests.
+
+---
+
+### Bug 2 — Transaction list missing card/account label
+
+**Symptom:** עסקאות אחרונות shows amount, date, description, category — but not which card the transaction came from.
+
+**Fix:** Add a small label to each transaction row in `TransactionList` showing the account name (or card last four if available). The account name is already stored on `Account` (e.g. "MAX 5432", "CAL 1234"). Two approaches:
+
+- Pass `accountName` down from the dashboard (already known from the account selector)
+- Or use `cardLastFour` already returned on each transaction row from `GET /transactions`
+
+**Recommendation:** Use `cardLastFour` — it's already on the transaction and requires no extra API call. Show it as a small muted badge next to the category badge. For accounts where `cardLastFour` is null, fall back to the account name from the store.
+
+**Files to touch:** `apps/web/src/components/transaction-list.tsx`, possibly `apps/web/src/hooks/use-transactions.ts`.
+
+---
+
 ## Next task: Category distribution chart + Expenses page (Phase 7b/7d)
 
 ### Option A — Category chart first (7b)

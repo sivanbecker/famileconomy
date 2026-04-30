@@ -143,8 +143,8 @@
 - [x] CAL: parse charge date from billing header; filter transactions by chargeDate so installments from prior months appear in the correct billing month
 - [x] CAL: detect CRLF line endings inside quoted column headers (Windows exports)
 - [x] CAL: detect "עסקה בקליטה" → store as PENDING; auto-promote to CLEARED when settled version arrives in a later statement
-- [~] Fix: MAX refund/cancellation (negative amounts) treated as expense reductions, not income
-- [~] Fix: transaction list rows show card last four / account label
+- [x] Fix: MAX refund/cancellation (negative amounts) treated as expense reductions, not income
+- [x] Fix: transaction list rows show card last four / account label
 - [ ] Category distribution chart (pie/donut by category, Recharts) on dashboard
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm
