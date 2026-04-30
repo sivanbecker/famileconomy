@@ -40,7 +40,12 @@ const CAL_HEADER_MARKER = 'שם בית עסק'
 export class ImportService {
   detectFormat(csv: string): 'max' | 'cal' | null {
     if (csv.includes(MAX_HEADER_MARKER) && csv.includes('שם בית העסק')) return 'max'
-    if (csv.includes(CAL_HEADER_MARKER) && csv.includes('סכום\nחיוב')) return 'cal'
+    // CAL headers use quoted multi-line cells; the embedded newline may be \n or \r\n
+    if (
+      csv.includes(CAL_HEADER_MARKER) &&
+      (csv.includes('סכום\nחיוב') || csv.includes('סכום\r\nחיוב'))
+    )
+      return 'cal'
     return null
   }
 

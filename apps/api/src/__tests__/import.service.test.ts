@@ -39,6 +39,17 @@ const CAL_SINGLE_ROW =
   `,,,,,,\n` +
   `את המידע המלא,,,,,,`
 
+// Same file exported on Windows — column headers use \r\n inside quoted fields
+const CAL_SINGLE_ROW_CRLF =
+  `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-1234,,,,,,\r\n` +
+  `,,,,,,\r\n` +
+  `"עסקאות לחיוב ב-10/05/2026: 264.62 ₪",,,,,,\r\n` +
+  `עסקאות בתהליך קליטה 0 ₪,,,,,,\r\n` +
+  `"תאריך\r\nעסקה",שם בית עסק,"סכום\r\nעסקה","סכום\r\nחיוב","סוג\r\nעסקה",ענף,הערות\r\n` +
+  `24/4/26,א.י קמעונאות מזון,₪ 264.62,₪ 264.62,רגילה,מזון ומשקאות,\r\n` +
+  `,,,,,,\r\n` +
+  `את המידע המלא,,,,,,`
+
 const MOCK_ACCOUNT = {
   id: ACCOUNT_ID,
   userId: USER_ID,
@@ -75,6 +86,10 @@ describe('ImportService', () => {
 
     it('detects Cal format by column header marker', () => {
       expect(service.detectFormat(CAL_SINGLE_ROW)).toBe('cal')
+    })
+
+    it('detects Cal format when column headers use CRLF line endings (Windows export)', () => {
+      expect(service.detectFormat(CAL_SINGLE_ROW_CRLF)).toBe('cal')
     })
 
     it('returns null for unrecognised CSV', () => {
