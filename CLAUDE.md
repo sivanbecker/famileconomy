@@ -42,7 +42,7 @@ Do not use raw SQL except for complex reporting queries where Prisma cannot expr
 
 ## Branching Workflow
 
-**Never work directly on `main`.** For every task or feature:
+**Never work directly on `main`, and never push directly to `main`.** For every task or feature:
 
 1. Create a dedicated branch from `main`:
    - `feat/<scope>-<description>` — new feature
@@ -259,7 +259,7 @@ src/
 
 ## What Claude Should Never Do
 
-- Work directly on `main`.
+- Work directly on `main`, or push directly to `main` — always use a side branch and PR.
 - Squash merge PRs (unless explicitly asked).
 - Add `any` to TypeScript code.
 - Use float arithmetic for monetary amounts.
