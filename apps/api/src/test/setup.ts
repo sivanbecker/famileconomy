@@ -1,4 +1,13 @@
-import { vi } from 'vitest'
+import { vi, beforeAll } from 'vitest'
+
+// Set up required environment variables for tests
+beforeAll(() => {
+  process.env['JWT_SECRET'] = process.env['JWT_SECRET'] || 'test-secret-key'
+  process.env['GOOGLE_CLIENT_ID'] = process.env['GOOGLE_CLIENT_ID'] || 'test-client-id'
+  process.env['GOOGLE_CLIENT_SECRET'] = process.env['GOOGLE_CLIENT_SECRET'] || 'test-client-secret'
+  process.env['GOOGLE_REDIRECT_URI'] =
+    process.env['GOOGLE_REDIRECT_URI'] || 'http://localhost:3001/auth/google/callback'
+})
 
 vi.mock('../db/prisma', () => ({
   prisma: {
@@ -7,6 +16,7 @@ vi.mock('../db/prisma', () => ({
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
     },
     refreshToken: {
       findUnique: vi.fn(),
