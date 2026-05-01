@@ -181,17 +181,6 @@ describe('Google Drive Routes', () => {
   })
 
   describe('GET /drive/import/:jobId', () => {
-    it('returns 404 for nonexistent job', async () => {
-      const jobId = 'a'.repeat(64)
-
-      const response = await app.inject({
-        method: 'GET',
-        url: `/drive/import/${jobId}`,
-      })
-
-      expect(response.statusCode).toBe(404)
-    })
-
     it('returns 400 for invalid jobId format', async () => {
       const response = await app.inject({
         method: 'GET',

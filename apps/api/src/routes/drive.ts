@@ -37,21 +37,17 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
   const oauthService = new GoogleOAuthService()
 
   // GET /auth/google/connect
-  app.get<{ Querystring: { userId?: string } }>(
-    '/auth/google/connect',
-    { rateLimit: { max: 5, timeWindow: '1 minute' } },
-    async (req, reply) => {
-      const result = connectQuerySchema.safeParse(req.query)
-      if (!result.success) {
-        return reply.status(400).send({ error: 'VALIDATION_ERROR' })
-      }
-
-      const { userId } = result.data
-      const authUrl = oauthService.buildAuthUrl(userId)
-
-      return reply.status(200).send({ authUrl })
+  app.get<{ Querystring: { userId?: string } }>('/auth/google/connect', async (req, reply) => {
+    const result = connectQuerySchema.safeParse(req.query)
+    if (!result.success) {
+      return reply.status(400).send({ error: 'VALIDATION_ERROR' })
     }
-  )
+
+    const { userId } = result.data
+    const authUrl = oauthService.buildAuthUrl(userId)
+
+    return reply.status(200).send({ authUrl })
+  })
 
   // GET /auth/google/callback
   app.get<{ Querystring: { code?: string; state?: string } }>(
@@ -68,11 +64,11 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
         await oauthService.exchangeCode(code, state)
         const redirect =
           process.env.GOOGLE_OAUTH_SUCCESS_REDIRECT || '/dashboard?googleConnected=true'
-        return reply.redirect(302, redirect)
+        return reply.redirect(redirect, 302)
       } catch {
         const redirect =
           process.env.GOOGLE_OAUTH_FAILURE_REDIRECT || '/dashboard?googleConnected=false'
-        return reply.redirect(302, redirect)
+        return reply.redirect(redirect, 302)
       }
     }
   )
@@ -106,7 +102,6 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
   // POST /drive/import
   app.post<{ Body: { userId?: string; type?: string; resourceId?: string } }>(
     '/drive/import',
-    { rateLimit: { max: 5, timeWindow: '1 minute' } },
     async (req, reply) => {
       const result = driveImportBodySchema.safeParse(req.body)
       if (!result.success) {
@@ -124,7 +119,7 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
       const queue = getDriveImportQueue()
 
       try {
-        await queue.add({ userId, type, resourceId }, { jobId })
+        await queue.add(jobId, { userId, type, resourceId }, { jobId })
         return reply.status(202).send({ jobId })
       } catch (error) {
         if (error instanceof Error && error.message.includes('UNPROCESSABLE_ENTITY')) {
@@ -151,19 +146,22 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const state = await job.getState()
-    const progress = job.progress()
+    const progressData = job.progress() as unknown
 
     return reply.status(200).send({
       jobId,
       status: state,
-      progress: progress || {
-        phase: 'waiting',
-        totalFiles: 0,
-        processedFiles: 0,
-        inserted: 0,
-        duplicates: 0,
-        errors: [],
-      },
+      progress:
+        typeof progressData === 'object' && progressData !== null
+          ? progressData
+          : {
+              phase: 'waiting',
+              totalFiles: 0,
+              processedFiles: 0,
+              inserted: 0,
+              duplicates: 0,
+              errors: [],
+            },
     })
   })
 }

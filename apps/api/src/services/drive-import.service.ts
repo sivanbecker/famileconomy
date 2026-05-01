@@ -1,8 +1,7 @@
 import type { drive_v3 } from 'googleapis'
 import type { DriveImportJobData, DriveImportProgress } from '../lib/drive-import-types.js'
 import type { Job } from 'bullmq'
-import { ImportService } from './import.service.js'
-import type { Provider } from '@famileconomy/types'
+import { ImportService, type Provider } from './import.service.js'
 
 export class DriveImportService {
   private importService = new ImportService()

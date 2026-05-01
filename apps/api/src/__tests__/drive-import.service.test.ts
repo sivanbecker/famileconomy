@@ -108,7 +108,7 @@ describe('DriveImportService', () => {
       const files = await service.walkFolder(mockDrive as drive_v3.Drive, 'folder123')
 
       expect(files).toHaveLength(1)
-      expect(files[0].id).toBe('file1')
+      expect(files[0]?.id).toBe('file1')
     })
 
     it('returns empty array for empty folder', async () => {
