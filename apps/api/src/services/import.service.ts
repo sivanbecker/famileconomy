@@ -174,7 +174,9 @@ export class ImportService {
         description: row.description,
       })
 
-      const existing = await prisma.transaction.findFirst({ where: { dedupeHash } })
+      const existing = await prisma.transaction.findFirst({
+        where: { dedupeHash, importBatchId },
+      })
 
       const baseData = {
         accountId,
