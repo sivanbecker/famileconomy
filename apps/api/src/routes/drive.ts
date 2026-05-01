@@ -146,14 +146,15 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const state = await job.getState()
-    const progressData = job.progress() as unknown
+    const progressCall = job.progress as unknown
+    const progressValue = typeof progressCall === 'function' ? progressCall() : progressCall
 
     return reply.status(200).send({
       jobId,
       status: state,
       progress:
-        typeof progressData === 'object' && progressData !== null
-          ? progressData
+        typeof progressValue === 'object' && progressValue !== null
+          ? progressValue
           : {
               phase: 'waiting',
               totalFiles: 0,
