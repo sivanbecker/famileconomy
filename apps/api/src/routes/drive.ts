@@ -33,25 +33,39 @@ const jobIdParamSchema = z.object({
   jobId: z.string().regex(/^[a-f0-9]{64}$/),
 })
 
+const DRIVE_RATE_LIMIT_CONFIG = {
+  config: {
+    rateLimit: {
+      max: 5,
+      timeWindow: '1 minute',
+    },
+  },
+}
+
 export async function driveRoutes(app: FastifyInstance): Promise<void> {
   const oauthService = new GoogleOAuthService()
 
   // GET /auth/google/connect
-  app.get<{ Querystring: { userId?: string } }>('/auth/google/connect', async (req, reply) => {
-    const result = connectQuerySchema.safeParse(req.query)
-    if (!result.success) {
-      return reply.status(400).send({ error: 'VALIDATION_ERROR' })
+  app.get<{ Querystring: { userId?: string } }>(
+    '/auth/google/connect',
+    DRIVE_RATE_LIMIT_CONFIG,
+    async (req, reply) => {
+      const result = connectQuerySchema.safeParse(req.query)
+      if (!result.success) {
+        return reply.status(400).send({ error: 'VALIDATION_ERROR' })
+      }
+
+      const { userId } = result.data
+      const authUrl = oauthService.buildAuthUrl(userId)
+
+      return reply.status(200).send({ authUrl })
     }
-
-    const { userId } = result.data
-    const authUrl = oauthService.buildAuthUrl(userId)
-
-    return reply.status(200).send({ authUrl })
-  })
+  )
 
   // GET /auth/google/callback
   app.get<{ Querystring: { code?: string; state?: string } }>(
     '/auth/google/callback',
+    DRIVE_RATE_LIMIT_CONFIG,
     async (req, reply) => {
       const result = callbackQuerySchema.safeParse(req.query)
       if (!result.success) {
@@ -102,6 +116,7 @@ export async function driveRoutes(app: FastifyInstance): Promise<void> {
   // POST /drive/import
   app.post<{ Body: { userId?: string; type?: string; resourceId?: string } }>(
     '/drive/import',
+    DRIVE_RATE_LIMIT_CONFIG,
     async (req, reply) => {
       const result = driveImportBodySchema.safeParse(req.body)
       if (!result.success) {
