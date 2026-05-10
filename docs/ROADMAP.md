@@ -148,7 +148,7 @@
 - [x] Fix: CAL parser now stamps cardLastFour from header onto every row
 - [x] Dashboard: "כל החשבונות" all-accounts view as default in account selector
 - [x] Category distribution chart (pie/donut by category, Recharts) on dashboard
-- [~] Google Drive batch import — async folder walk, CSV detect, batch import
+- [x] Google Drive batch import — async folder walk, CSV detect, batch import (OAuth, service, routes; worker + frontend deferred to Phase 8)
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm
 
