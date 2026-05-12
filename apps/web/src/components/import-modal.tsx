@@ -19,6 +19,7 @@ import { toast } from './toast'
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Provider = 'MAX' | 'CAL'
+type FileFormat = 'xlsx' | 'csv'
 
 interface ImportResult {
   inserted: number
@@ -39,6 +40,7 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
   const { user } = useAuth()
 
   const [provider, setProvider] = useState<Provider>('MAX')
+  const [fileFormat, setFileFormat] = useState<FileFormat>('xlsx')
   const [loading, setLoading] = useState(false)
   const [inlineError, setInlineError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
@@ -60,7 +62,8 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
 
     const file = fileRef.current?.files?.[0]
     if (!file) {
-      toast('יש לבחור קובץ CSV', 'error')
+      const fileTypeName = fileFormat === 'xlsx' ? 'XLSX' : 'CSV'
+      toast(`יש לבחור קובץ ${fileTypeName}`, 'error')
       return
     }
 
@@ -71,7 +74,8 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
 
     setLoading(true)
     try {
-      const res = await apiClient.post<ImportResult>('/import/csv', formData, {
+      const endpoint = fileFormat === 'xlsx' ? '/import/xlsx' : '/import/csv'
+      const res = await apiClient.post<ImportResult>(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
       const { inserted, duplicates } = res.data
@@ -108,7 +112,7 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>ייבוא דוחות אשראי</DialogTitle>
-          <DialogDescription>בחר ספק כרטיס אשראי וקובץ CSV</DialogDescription>
+          <DialogDescription>בחר ספק כרטיס אשראי, סוג קובץ וקובץ</DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 pt-2">
@@ -145,15 +149,48 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
             </label>
           </fieldset>
 
+          {/* File format picker */}
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium">סוג קובץ</legend>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-md border border-border px-3 py-2 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+              <input
+                type="radio"
+                name="fileFormat"
+                value="xlsx"
+                checked={fileFormat === 'xlsx'}
+                onChange={() => {
+                  setFileFormat('xlsx')
+                  setInlineError(null)
+                }}
+                className="accent-primary"
+              />
+              <span>XLSX (מומלץ)</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2.5 rounded-md border border-border px-3 py-2 text-sm transition-colors has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+              <input
+                type="radio"
+                name="fileFormat"
+                value="csv"
+                checked={fileFormat === 'csv'}
+                onChange={() => {
+                  setFileFormat('csv')
+                  setInlineError(null)
+                }}
+                className="accent-primary"
+              />
+              <span>CSV</span>
+            </label>
+          </fieldset>
+
           {/* File picker */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium" htmlFor="import-file">
-              קובץ CSV
+              {fileFormat === 'xlsx' ? 'קובץ XLSX' : 'קובץ CSV'}
             </label>
             <Input
               id="import-file"
               type="file"
-              accept=".csv"
+              accept={fileFormat === 'xlsx' ? '.xlsx' : '.csv'}
               ref={fileRef}
               onChange={() => setInlineError(null)}
             />
