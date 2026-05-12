@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Format + Lint + Typecheck
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -34,7 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Unit Tests
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -59,7 +59,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Build
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -76,7 +76,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Security Scan
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -120,7 +120,7 @@ jobs:
     runs-on: ubuntu-latest
     name: Migration Lint
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -147,7 +147,7 @@ jobs:
       DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
       NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET_TEST }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - uses: actions/setup-node@v4
         with:
@@ -177,7 +177,7 @@ jobs:
     needs: [quality, test, build, security]
     environment: staging
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Deploy web to Vercel (preview)
         run: npx vercel deploy --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy API to Railway (staging)
@@ -194,7 +194,7 @@ jobs:
       name: production
       # Manual approval gate — configure in GitHub repo Settings → Environments
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Deploy web to Vercel (production)
         run: npx vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }}
       - name: Deploy API to Railway (production)
