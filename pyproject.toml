@@ -1,0 +1,8 @@
+[project]
+name = "famileconomy"
+version = "0.1.0"
+description = "Personal finance management app for families"
+requires-python = ">=3.12"
+dependencies = [
+    "openpyxl>=3.1.0",
+]

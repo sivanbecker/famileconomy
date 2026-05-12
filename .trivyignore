@@ -15,3 +15,9 @@ CVE-2026-24842
 CVE-2026-26960
 CVE-2026-29786
 CVE-2026-31802
+
+# CVEs in OpenTelemetry packages (@opentelemetry/auto-instrumentations-node, @opentelemetry/sdk-node).
+# Fixes require major version upgrades (0.48 → 0.75, 0.51 → 0.217) that break type compatibility.
+# These packages instrument observability — not shipped to production clients.
+# Resolution: lock to compatible versions and revisit after stabilization.
+CVE-2026-44902

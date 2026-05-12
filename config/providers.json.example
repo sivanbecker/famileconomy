@@ -1,0 +1,12 @@
+{
+  "MAX": {
+    "valid_cards": ["0123", "1234"],
+    "xlsx_base": "/path/to/credit cards/MAX/XLS",
+    "csv_base": "/path/to/credit cards/MAX/CSV"
+  },
+  "CAL": {
+    "valid_cards": ["4321"],
+    "xlsx_base": "/path/to/credit cards/CAL/XLSX",
+    "csv_base": "/path/to/credit cards/CAL/CSV"
+  }
+}
