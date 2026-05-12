@@ -3,6 +3,8 @@ import { prisma } from '../db/prisma.js'
 import { TransactionStatus } from '@prisma/client'
 import { parseMaxCsv, extractMaxCardIdentifiers } from '../lib/parsers/max-parser.js'
 import { parseCalCsv, extractCalCardIdentifiers } from '../lib/parsers/cal-parser.js'
+import { parseMaxXlsx, extractMaxXlsxCardIdentifiers } from '../lib/parsers/max-xlsx-parser.js'
+import { parseCalXlsx, extractCalXlsxCardIdentifiers } from '../lib/parsers/cal-xlsx-parser.js'
 import { computeDedupeHash } from '../lib/parsers/dedup-hash.js'
 import type { ParsedTransaction } from '../lib/parsers/types.js'
 
@@ -18,6 +20,13 @@ export interface ImportResult {
 
 export interface ImportCsvInput {
   csv: string
+  filename: string
+  provider: Provider
+  userId: string
+}
+
+export interface ImportXlsxInput {
+  fileBuffer: Buffer
   filename: string
   provider: Provider
   userId: string
@@ -101,6 +110,21 @@ export class ImportService {
     }
   }
 
+  async importXlsx(input: ImportXlsxInput): Promise<ImportResult> {
+    const { fileBuffer, filename, provider, userId } = input
+
+    // Batch-level dedup — reject re-upload of the exact same file content
+    const fileHash = createHash('sha256').update(fileBuffer).digest('hex')
+    const existingBatch = await prisma.importBatch.findFirst({ where: { fileHash } })
+    if (existingBatch) throw new ImportError('FILE_ALREADY_IMPORTED')
+
+    if (provider === 'MAX') {
+      return this.importMaxXlsx({ fileBuffer, filename, userId, fileHash })
+    } else {
+      return this.importCalXlsx({ fileBuffer, filename, userId, fileHash })
+    }
+  }
+
   // ─── MAX import ─────────────────────────────────────────────────────────────
 
   private async importMaxCsv(opts: {
@@ -146,6 +170,60 @@ export class ImportService {
 
     const accountId = await this.findOrCreateAccount(userId, 'CAL', cardLastFour)
     const rows = parseCalCsv(csv)
+
+    const batch = await prisma.importBatch.create({
+      data: { accountId, filename, fileHash, rowCount: rows.length },
+    })
+
+    const result = await this.insertRows(rows, accountId, batch.id, userId)
+    return { inserted: result.inserted, duplicates: result.duplicates, errors: [] }
+  }
+
+  // ─── MAX XLSX import ────────────────────────────────────────────────────────
+
+  private async importMaxXlsx(opts: {
+    fileBuffer: Buffer
+    filename: string
+    userId: string
+    fileHash: string
+  }): Promise<ImportResult> {
+    const { fileBuffer, filename, userId, fileHash } = opts
+    const cardIdentifiers = await extractMaxXlsxCardIdentifiers(fileBuffer)
+    const allRows = await parseMaxXlsx(fileBuffer)
+
+    let inserted = 0
+    let duplicates = 0
+
+    for (const cardLastFour of cardIdentifiers) {
+      const accountId = await this.findOrCreateAccount(userId, 'MAX', cardLastFour)
+      const rows = allRows.filter(r => r.cardLastFour === cardLastFour)
+
+      const batch = await prisma.importBatch.create({
+        data: { accountId, filename, fileHash, rowCount: rows.length },
+      })
+
+      const result = await this.insertRows(rows, accountId, batch.id, userId)
+      inserted += result.inserted
+      duplicates += result.duplicates
+    }
+
+    return { inserted, duplicates, errors: [] }
+  }
+
+  // ─── CAL XLSX import ────────────────────────────────────────────────────────
+
+  private async importCalXlsx(opts: {
+    fileBuffer: Buffer
+    filename: string
+    userId: string
+    fileHash: string
+  }): Promise<ImportResult> {
+    const { fileBuffer, filename, userId, fileHash } = opts
+    const [cardLastFour] = await extractCalXlsxCardIdentifiers(fileBuffer)
+    if (!cardLastFour) throw new ImportError('CARD_NOT_FOUND')
+
+    const accountId = await this.findOrCreateAccount(userId, 'CAL', cardLastFour)
+    const rows = await parseCalXlsx(fileBuffer)
 
     const batch = await prisma.importBatch.create({
       data: { accountId, filename, fileHash, rowCount: rows.length },

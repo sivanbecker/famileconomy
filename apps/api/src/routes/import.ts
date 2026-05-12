@@ -78,4 +78,52 @@ export async function importRoutes(app: FastifyInstance): Promise<void> {
       throw err
     }
   })
+
+  // POST /import/xlsx
+  app.post('/import/xlsx', async (req: FastifyRequest, reply: FastifyReply) => {
+    const parts = req.parts()
+
+    let fileBuffer: Buffer | undefined
+    let filename: string | undefined
+    let provider: Provider | undefined
+    let userId: string | undefined
+
+    for await (const part of parts) {
+      if (part.type === 'file' && part.fieldname === 'file') {
+        const chunks: Buffer[] = []
+        for await (const chunk of part.file) {
+          chunks.push(chunk)
+        }
+        fileBuffer = Buffer.concat(chunks)
+        filename = part.filename
+      } else if (part.type === 'field') {
+        if (part.fieldname === 'provider') {
+          const v = part.value as string
+          if (isProvider(v)) provider = v
+        }
+        if (part.fieldname === 'userId') userId = part.value as string
+      }
+    }
+
+    if (!fileBuffer || !filename) {
+      return reply.status(400).send({ error: 'MISSING_FILE' })
+    }
+    if (!provider) {
+      return reply.status(400).send({ error: 'MISSING_PROVIDER' })
+    }
+    if (!userId) {
+      return reply.status(400).send({ error: 'MISSING_USER_ID' })
+    }
+
+    try {
+      const result = await importService.importXlsx({ fileBuffer, filename, provider, userId })
+      return reply.send(result)
+    } catch (err) {
+      if (err instanceof ImportError) {
+        const { status, message } = mapImportError(err)
+        return reply.status(status).send({ error: err.code, message })
+      }
+      throw err
+    }
+  })
 }
