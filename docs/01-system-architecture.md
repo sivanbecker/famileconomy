@@ -1,5 +1,7 @@
 # Document 01 — System Architecture
+
 ## Family Finance Management App (קופת המשפחה)
+
 **Version:** 1.0  
 **Status:** Draft — Pre-Development  
 **Author:** Architecture Session  
@@ -43,16 +45,16 @@ A personal and family finance management application targeting the Israeli marke
 
 ### Primary Market Constraints
 
-| Constraint | Detail |
-|---|---|
-| Primary currency | ILS (₪) |
-| Secondary currencies | USD, EUR (foreign subscriptions) |
-| Card providers supported | Max, Cal, Visa CAL, Bank Leumi, Bank Mizrahi |
-| CSV encoding | Hebrew (Windows-1255 or UTF-8 depending on provider) |
-| Date format | DD/MM/YYYY |
-| Installment payments | תשלומים — core concept, must be modeled natively |
-| Standing orders | הוראת קבע — bank transfers, not credit card |
-| Privacy law | Israeli Privacy Protection Law (חוק הגנת הפרטיות) |
+| Constraint               | Detail                                               |
+| ------------------------ | ---------------------------------------------------- |
+| Primary currency         | ILS (₪)                                              |
+| Secondary currencies     | USD, EUR (foreign subscriptions)                     |
+| Card providers supported | Max, Cal, Visa CAL, Bank Leumi, Bank Mizrahi         |
+| CSV encoding             | Hebrew (Windows-1255 or UTF-8 depending on provider) |
+| Date format              | DD/MM/YYYY                                           |
+| Installment payments     | תשלומים — core concept, must be modeled natively     |
+| Standing orders          | הוראת קבע — bank transfers, not credit card          |
+| Privacy law              | Israeli Privacy Protection Law (חוק הגנת הפרטיות)    |
 
 ### Target Users (Phase 1)
 
@@ -65,24 +67,31 @@ Small beta group of Israeli families. Single user per account initially, with sp
 These principles govern every technical decision made in this project. When in doubt, return to this list.
 
 ### P1 — Local-First
+
 User data lives on the device. The app is fully functional offline. Cloud sync is an optional enhancement, never a requirement for core functionality. This also improves our privacy compliance posture significantly.
 
 ### P2 — Security by Default
+
 Financial data is among the most sensitive data a person holds. Encryption, data isolation, and principle of least privilege are not phase-2 concerns — they are foundational.
 
 ### P3 — Single Source of Truth
+
 A `Transaction` is immutable reality. Once imported or entered, it is never silently modified. All derived data (monthly totals, forecasts, matching status) is computed from transactions, never stored in place of them.
 
 ### P4 — Type Safety End-to-End
+
 TypeScript everywhere — mobile, web, and backend. Shared types via the monorepo `/packages/shared-types` package. A type mismatch caught at compile time cannot cause a production bug.
 
 ### P5 — Explicit Over Implicit
+
 The matching engine that links recurring expenses to transactions must be inspectable and explainable to the user. No black-box logic that silently modifies financial records.
 
 ### P6 — Solo-Developer Friendly
+
 Every architectural choice must be maintainable by one person. Complexity is added only when it solves a real problem that simpler approaches cannot. Managed services are preferred over self-hosted infrastructure wherever cost is acceptable.
 
 ### P7 — Designed to Scale
+
 The MVP is built for a small beta group, but the architecture anticipates 10,000+ users without fundamental redesign. This means: stateless API servers, row-level data isolation, async processing for heavy jobs, and a database schema that does not require migrations for user growth.
 
 ---
@@ -144,6 +153,7 @@ The MVP is built for a small beta group, but the architecture anticipates 10,000
 ### Tooling: Turborepo
 
 Turborepo is the monorepo build system. It provides:
+
 - Incremental builds (only rebuild changed packages)
 - Shared TypeScript configurations
 - Pipeline definitions (build → test → lint in correct order)
@@ -228,29 +238,29 @@ Turborepo is the monorepo build system. It provides:
 
 ### Mobile — React Native + Expo
 
-| Concern | Solution | Rationale |
-|---|---|---|
-| Framework | React Native + Expo SDK | OTA updates, managed builds, no Xcode required for every release |
-| Routing | Expo Router (file-based) | Same mental model as Next.js, deep linking built-in |
-| State management | Zustand | No boilerplate, works offline, easy to persist to local DB |
-| Local database | WatermelonDB | Built for RN, SQLite under the hood, designed for sync |
-| Styling | NativeWind (Tailwind for RN) | Shared utility classes with web, RTL support via `I18nManager` |
-| Forms | React Hook Form + Zod | Type-safe, minimal re-renders |
-| Charts | Victory Native | Supports RN, good Hebrew/RTL compatibility |
-| HTTP client | Axios with interceptors | JWT refresh handling, offline queue |
-| i18n/RTL | i18next + React Native RTL | Hebrew-first, all layouts right-to-left |
+| Concern          | Solution                     | Rationale                                                        |
+| ---------------- | ---------------------------- | ---------------------------------------------------------------- |
+| Framework        | React Native + Expo SDK      | OTA updates, managed builds, no Xcode required for every release |
+| Routing          | Expo Router (file-based)     | Same mental model as Next.js, deep linking built-in              |
+| State management | Zustand                      | No boilerplate, works offline, easy to persist to local DB       |
+| Local database   | WatermelonDB                 | Built for RN, SQLite under the hood, designed for sync           |
+| Styling          | NativeWind (Tailwind for RN) | Shared utility classes with web, RTL support via `I18nManager`   |
+| Forms            | React Hook Form + Zod        | Type-safe, minimal re-renders                                    |
+| Charts           | Victory Native               | Supports RN, good Hebrew/RTL compatibility                       |
+| HTTP client      | Axios with interceptors      | JWT refresh handling, offline queue                              |
+| i18n/RTL         | i18next + React Native RTL   | Hebrew-first, all layouts right-to-left                          |
 
 ### Web — Next.js (App Router)
 
-| Concern | Solution | Rationale |
-|---|---|---|
-| Framework | Next.js 14+ App Router | SSR for initial load, React Server Components for dashboard |
-| State management | Zustand (same stores as mobile) | Consistency across platforms |
-| Local database | Dexie.js (IndexedDB wrapper) | Best DX for IndexedDB, TypeScript-native |
-| Styling | Tailwind CSS | Consistent with NativeWind, utility-first |
-| Forms | React Hook Form + Zod (same as mobile) | Shared validation schemas via shared-types |
-| Charts | Recharts | Mature, customizable, RTL-compatible |
-| i18n/RTL | next-intl | App Router compatible, RTL layout via `dir="rtl"` |
+| Concern          | Solution                               | Rationale                                                   |
+| ---------------- | -------------------------------------- | ----------------------------------------------------------- |
+| Framework        | Next.js 14+ App Router                 | SSR for initial load, React Server Components for dashboard |
+| State management | Zustand (same stores as mobile)        | Consistency across platforms                                |
+| Local database   | Dexie.js (IndexedDB wrapper)           | Best DX for IndexedDB, TypeScript-native                    |
+| Styling          | Tailwind CSS                           | Consistent with NativeWind, utility-first                   |
+| Forms            | React Hook Form + Zod (same as mobile) | Shared validation schemas via shared-types                  |
+| Charts           | Recharts                               | Mature, customizable, RTL-compatible                        |
+| i18n/RTL         | next-intl                              | App Router compatible, RTL layout via `dir="rtl"`           |
 
 ### Shared UI Rules
 
@@ -262,11 +272,13 @@ Turborepo is the monorepo build system. It provides:
 ### Navigation Structure (from UI Mockups)
 
 **Mobile (bottom tab bar):**
+
 ```
 תמונת מצב | תכנון | [+] הוספה | דוחות | עוד
 ```
 
 **Desktop (left sidebar, RTL = right sidebar):**
+
 ```
 תמונת מצב (Dashboard)
 הכנסות (Income)
@@ -286,6 +298,7 @@ Turborepo is the monorepo build system. It provides:
 ### Framework: Fastify (not Express)
 
 Fastify is chosen over Express for the following reasons:
+
 - Native TypeScript support with full type inference on routes
 - Built-in JSON schema validation (Ajv) — validates request/response shapes automatically
 - 3x faster than Express in benchmarks (matters at scale)
@@ -343,12 +356,12 @@ POST   /sync/push
 
 ### Background Workers (BullMQ)
 
-| Queue | Job | Trigger |
-|---|---|---|
-| `csv-import` | Parse + normalize CSV, dedup, run matcher | POST /import/process |
-| `matching` | Re-run matching engine for a month | Month close, recurring update |
-| `forecast` | Recompute month-end forecast | New transaction added |
-| `notifications` | Send alert (missing recurring, budget exceeded) | Scheduled daily |
+| Queue           | Job                                             | Trigger                       |
+| --------------- | ----------------------------------------------- | ----------------------------- |
+| `csv-import`    | Parse + normalize CSV, dedup, run matcher       | POST /import/process          |
+| `matching`      | Re-run matching engine for a month              | Month close, recurring update |
+| `forecast`      | Recompute month-end forecast                    | New transaction added         |
+| `notifications` | Send alert (missing recurring, budget exceeded) | Scheduled daily               |
 
 Workers run as separate Node.js processes. They share the same `/packages/parsers` and `/packages/matching-engine` code.
 
@@ -359,6 +372,7 @@ Workers run as separate Node.js processes. They share the same `/packages/parser
 ### The Core Principle
 
 The app must work 100% offline. This means:
+
 - All CRUD operations write to the local DB first
 - The local DB is the authoritative source for the UI
 - Cloud sync is a background process, not a prerequisite
@@ -366,6 +380,7 @@ The app must work 100% offline. This means:
 ### Mobile: WatermelonDB
 
 WatermelonDB is built specifically for this pattern:
+
 - Lazy loading — only loads records that are actually rendered
 - Reactive queries — UI updates automatically when DB changes
 - Built-in sync protocol (push/pull with conflict resolution)
@@ -374,16 +389,14 @@ WatermelonDB is built specifically for this pattern:
 ```typescript
 // Example: Reactive transaction list
 const TransactionList = withObservables(['month'], ({ month }) => ({
-  transactions: database.collections
-    .get('transactions')
-    .query(Q.where('month', month))
-    .observe()
+  transactions: database.collections.get('transactions').query(Q.where('month', month)).observe(),
 }))
 ```
 
 ### Web: Dexie.js (IndexedDB)
 
 For the web app, IndexedDB via Dexie provides:
+
 - Async/await API over IndexedDB
 - TypeScript-native schema definitions
 - Live queries via `useLiveQuery` hook
@@ -396,6 +409,7 @@ When the same record is modified on two devices while offline, we need a resolut
 **Decision: Last-Write-Wins with timestamp (LWW)**
 
 For financial data, LWW is acceptable because:
+
 1. Most edits are additive (new transactions), not conflicting updates
 2. The same transaction is unlikely to be edited on two devices simultaneously
 3. The user can see and correct any wrong values
@@ -434,16 +448,16 @@ Push cycle (device → server):
 
 ### What Gets Synced vs. What Stays Local
 
-| Data | Synced to Cloud | Notes |
-|---|---|---|
-| Transactions | Yes (encrypted) | Core data |
-| Recurring expenses | Yes (encrypted) | Core data |
-| Income entries | Yes (encrypted) | Core data |
-| Monthly budget | Yes (encrypted) | Derived but user-editable |
-| Import batches metadata | Yes | For dedup across devices |
-| Raw CSV files | Never | Processed and discarded |
-| User preferences/settings | Yes | Theme, language, etc. |
-| Auth tokens | Never | Device-local only |
+| Data                      | Synced to Cloud | Notes                     |
+| ------------------------- | --------------- | ------------------------- |
+| Transactions              | Yes (encrypted) | Core data                 |
+| Recurring expenses        | Yes (encrypted) | Core data                 |
+| Income entries            | Yes (encrypted) | Core data                 |
+| Monthly budget            | Yes (encrypted) | Derived but user-editable |
+| Import batches metadata   | Yes             | For dedup across devices  |
+| Raw CSV files             | Never           | Processed and discarded   |
+| User preferences/settings | Yes             | Theme, language, etc.     |
+| Auth tokens               | Never           | Device-local only         |
 
 ---
 
@@ -452,6 +466,7 @@ Push cycle (device → server):
 ### Threat Model
 
 We are protecting against:
+
 1. **Server breach** — attacker gains DB access → encrypted data is useless without user keys
 2. **Man-in-the-middle** — TLS + certificate pinning on mobile
 3. **Unauthorized API access** — JWT + refresh token rotation
@@ -486,6 +501,7 @@ Refresh Token:
 ```
 
 **Refresh Token Rotation Algorithm:**
+
 ```
 1. Client presents refresh token RT_n
 2. Server looks up hash(RT_n) in token table
@@ -529,12 +545,12 @@ WatermelonDB uses SQLCipher (AES-256) for full database encryption on device. Th
 // This is a defense-in-depth layer on top of JWT validation
 
 prisma.$use(async (params, next) => {
-  const userId = getCurrentUserId(); // from request context
+  const userId = getCurrentUserId() // from request context
   if (params.action === 'findMany') {
-    params.args.where = { ...params.args.where, userId };
+    params.args.where = { ...params.args.where, userId }
   }
-  return next(params);
-});
+  return next(params)
+})
 ```
 
 Additionally, PostgreSQL Row Level Security (RLS) is enabled as a second independent layer. Even if application code has a bug that fails to scope a query, the database rejects cross-user data access.
@@ -571,8 +587,8 @@ Tables that require audit logging: `transactions`, `recurring_expenses`, `income
 
 ```typescript
 fastify.register(require('@fastify/cors'), {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') ?? [],  // explicit whitelist only
-  credentials: true,    // required for httpOnly cookie auth
+  origin: process.env.ALLOWED_ORIGINS?.split(',') ?? [], // explicit whitelist only
+  credentials: true, // required for httpOnly cookie auth
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
 })
 // Never use origin: '*' — this would allow any website to make credentialed requests
@@ -580,14 +596,14 @@ fastify.register(require('@fastify/cors'), {
 
 ### Compliance (Israeli Privacy Protection Law)
 
-| Requirement | Implementation |
-|---|---|
-| Right to deletion | Hard delete endpoint — cascades all user data including audit log (exception: audit log rows older than 7 years are retained per financial record-keeping law) |
-| Data portability | Export endpoint — returns all user data as JSON/CSV (decrypted for the requesting user only) |
-| Data minimization | We collect only what is functionally necessary |
-| No data selling | Enforced in ToS; technically impossible from our architecture |
-| Breach notification | Sentry alerts + Better Stack uptime monitoring from day one |
-| Data traceability | Append-only audit log on all financial mutations |
+| Requirement         | Implementation                                                                                                                                                 |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Right to deletion   | Hard delete endpoint — cascades all user data including audit log (exception: audit log rows older than 7 years are retained per financial record-keeping law) |
+| Data portability    | Export endpoint — returns all user data as JSON/CSV (decrypted for the requesting user only)                                                                   |
+| Data minimization   | We collect only what is functionally necessary                                                                                                                 |
+| No data selling     | Enforced in ToS; technically impossible from our architecture                                                                                                  |
+| Breach notification | Sentry alerts + Better Stack uptime monitoring from day one                                                                                                    |
+| Data traceability   | Append-only audit log on all financial mutations                                                                                                               |
 
 ---
 
@@ -630,17 +646,15 @@ Fastify uses `pino` natively. Configure at server startup:
 const server = Fastify({
   logger: {
     level: process.env.LOG_LEVEL ?? 'info',
-    transport: process.env.NODE_ENV === 'development'
-      ? { target: 'pino-pretty' }
-      : undefined,
+    transport: process.env.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
     serializers: {
-      req: (req) => ({
+      req: req => ({
         requestId: req.id,
         method: req.method,
         url: req.url,
         // Never log req.body — may contain passwords or financial data
       }),
-      res: (res) => ({
+      res: res => ({
         statusCode: res.statusCode,
       }),
     },
@@ -649,16 +663,34 @@ const server = Fastify({
 ```
 
 **Request lifecycle log:**
+
 ```json
-{ "level": "info", "requestId": "abc123", "userId": "uuid", "method": "POST",
-  "route": "/transactions", "statusCode": 201, "durationMs": 34 }
+{
+  "level": "info",
+  "requestId": "abc123",
+  "userId": "uuid",
+  "method": "POST",
+  "route": "/transactions",
+  "statusCode": 201,
+  "durationMs": 34
+}
 ```
 
 **Business event log (import completed):**
+
 ```json
-{ "level": "info", "requestId": "abc123", "userId": "uuid", "event": "import_completed",
-  "batchId": "uuid", "source": "max", "imported": 47, "duplicates": 3,
-  "matched": 12, "durationMs": 1840 }
+{
+  "level": "info",
+  "requestId": "abc123",
+  "userId": "uuid",
+  "event": "import_completed",
+  "batchId": "uuid",
+  "source": "max",
+  "imported": 47,
+  "duplicates": 3,
+  "matched": 12,
+  "durationMs": 1840
+}
 ```
 
 ### Distributed Tracing (OpenTelemetry)
@@ -690,11 +722,11 @@ const { trace } = require('@opentelemetry/api')
 const tracer = trace.getTracer('csv-import-worker')
 
 async function processImportJob(job: Job) {
-  return tracer.startActiveSpan('import.process', async (span) => {
+  return tracer.startActiveSpan('import.process', async span => {
     span.setAttributes({
       'import.source': job.data.source,
       'import.batch_id': job.data.batchId,
-      'user.id': job.data.userId,   // ID only — never amounts or PII
+      'user.id': job.data.userId, // ID only — never amounts or PII
     })
     try {
       const result = await runPipeline(job)
@@ -748,8 +780,8 @@ fastify.get('/health', async () => ({ status: 'ok', uptime: process.uptime() }))
 // Readiness — can the process serve traffic? (checks dependencies)
 fastify.get('/ready', async (req, reply) => {
   const checks = await Promise.allSettled([
-    prisma.$queryRaw`SELECT 1`,          // DB reachable
-    redis.ping(),                         // Redis reachable
+    prisma.$queryRaw`SELECT 1`, // DB reachable
+    redis.ping(), // Redis reachable
   ])
   const failed = checks.filter(c => c.status === 'rejected')
   if (failed.length > 0) {
@@ -763,22 +795,23 @@ fastify.get('/ready', async (req, reply) => {
 
 ### Tooling by Environment
 
-| Environment | Logs | Traces | Metrics | Errors | Uptime |
-|---|---|---|---|---|---|
-| Development | pino-pretty (stdout) | Jaeger (Docker local) | — | Sentry (dev project) | — |
-| Staging | Better Stack | Grafana Tempo | Grafana Mimir | Sentry | Better Stack |
-| Production | Better Stack | Grafana Tempo | Grafana Mimir | Sentry | Better Stack |
+| Environment | Logs                 | Traces                | Metrics       | Errors               | Uptime       |
+| ----------- | -------------------- | --------------------- | ------------- | -------------------- | ------------ |
+| Development | pino-pretty (stdout) | Jaeger (Docker local) | —             | Sentry (dev project) | —            |
+| Staging     | Better Stack         | Grafana Tempo         | Grafana Mimir | Sentry               | Better Stack |
+| Production  | Better Stack         | Grafana Tempo         | Grafana Mimir | Sentry               | Better Stack |
 
 **Local Jaeger for development:**
+
 ```yaml
 # docker-compose.yml addition
 jaeger:
   image: jaegertracing/all-in-one:latest
   ports:
-    - "16686:16686"   # UI
-    - "4318:4318"     # OTLP/HTTP
+    - '16686:16686' # UI
+    - '4318:4318' # OTLP/HTTP
   environment:
-    COLLECTOR_OTLP_ENABLED: "true"
+    COLLECTOR_OTLP_ENABLED: 'true'
 ```
 
 Set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` locally to see traces in Jaeger UI at `http://localhost:16686`.
@@ -790,6 +823,7 @@ Set `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` locally to see traces in
 ### Overview
 
 The import pipeline is one of the most complex subsystems. It must handle:
+
 - Multiple file formats (CSV, Excel — later PDF)
 - Hebrew text encoding (Windows-1255 and UTF-8)
 - Different column structures per bank
@@ -847,19 +881,19 @@ Each bank parser implements this interface:
 // In /packages/parsers/src/base-parser.ts
 
 interface BankParser {
-  source: BankSource; // 'max' | 'cal' | 'leumi' | 'mizrahi'
-  detect(buffer: Buffer): boolean; // Can this parser handle this file?
-  parse(buffer: Buffer): Promise<RawTransaction[]>;
+  source: BankSource // 'max' | 'cal' | 'leumi' | 'mizrahi'
+  detect(buffer: Buffer): boolean // Can this parser handle this file?
+  parse(buffer: Buffer): Promise<RawTransaction[]>
 }
 
 interface RawTransaction {
-  date: string;          // DD/MM/YYYY — parsed to Date in Stage 3
-  merchantRaw: string;   // Exact string from bank file
-  amount: number;        // Always positive. Negative = credit/refund
-  currency: string;      // 'ILS' | 'USD' | 'EUR'
-  description?: string;  // Additional description column if present
-  installmentText?: string; // Raw installment text e.g. "2/6"
-  transactionType?: string; // Bank-specific type field
+  date: string // DD/MM/YYYY — parsed to Date in Stage 3
+  merchantRaw: string // Exact string from bank file
+  amount: number // Always positive. Negative = credit/refund
+  currency: string // 'ILS' | 'USD' | 'EUR'
+  description?: string // Additional description column if present
+  installmentText?: string // Raw installment text e.g. "2/6"
+  transactionType?: string // Bank-specific type field
 }
 ```
 
@@ -870,12 +904,12 @@ Duplicate prevention uses a **content hash**, not a timestamp or ID (bank IDs ar
 ```typescript
 function buildTransactionHash(t: RawTransaction, userId: string): string {
   // Normalize amount to avoid float comparison issues
-  const normalizedAmount = Math.round(t.amount * 100);
+  const normalizedAmount = Math.round(t.amount * 100)
   // Normalize merchant: lowercase, remove extra spaces
-  const normalizedMerchant = t.merchantRaw.toLowerCase().trim();
-  const dateStr = parseDate(t.date).toISOString().split('T')[0];
+  const normalizedMerchant = t.merchantRaw.toLowerCase().trim()
+  const dateStr = parseDate(t.date).toISOString().split('T')[0]
 
-  return SHA256(`${userId}:${dateStr}:${normalizedAmount}:${normalizedMerchant}`);
+  return SHA256(`${userId}:${dateStr}:${normalizedAmount}:${normalizedMerchant}`)
 }
 ```
 
@@ -885,7 +919,9 @@ function buildTransactionHash(t: RawTransaction, userId: string): string {
 
 ```typescript
 if (t.installmentText) {
-  return SHA256(`${userId}:${dateStr}:${normalizedAmount}:${normalizedMerchant}:${t.installmentText}`);
+  return SHA256(
+    `${userId}:${dateStr}:${normalizedAmount}:${normalizedMerchant}:${t.installmentText}`
+  )
 }
 ```
 
@@ -949,17 +985,17 @@ Matcher checks:
 
 ### MVP Infrastructure (Solo Developer Friendly)
 
-| Service | Provider | Rationale |
-|---|---|---|
-| API hosting | Railway | Zero DevOps, auto-deploy from Git, scales to multiple instances |
-| PostgreSQL | Railway (managed) | Automated backups, connection pooling, no DBA needed |
-| Redis | Railway (managed) | BullMQ + caching + rate limiting |
-| File storage | Cloudflare R2 | S3-compatible, zero egress fees, generous free tier |
-| CDN | Cloudflare | Free tier sufficient for MVP |
-| Mobile builds | Expo EAS Build | Managed iOS/Android builds without local Xcode/Android Studio |
-| Web hosting | Vercel | Zero-config Next.js deployment, global CDN |
-| Monitoring | Better Stack (Logtail) | Logs + uptime monitoring, generous free tier |
-| Error tracking | Sentry | Free for small volumes, critical for production quality |
+| Service        | Provider               | Rationale                                                       |
+| -------------- | ---------------------- | --------------------------------------------------------------- |
+| API hosting    | Railway                | Zero DevOps, auto-deploy from Git, scales to multiple instances |
+| PostgreSQL     | Railway (managed)      | Automated backups, connection pooling, no DBA needed            |
+| Redis          | Railway (managed)      | BullMQ + caching + rate limiting                                |
+| File storage   | Cloudflare R2          | S3-compatible, zero egress fees, generous free tier             |
+| CDN            | Cloudflare             | Free tier sufficient for MVP                                    |
+| Mobile builds  | Expo EAS Build         | Managed iOS/Android builds without local Xcode/Android Studio   |
+| Web hosting    | Vercel                 | Zero-config Next.js deployment, global CDN                      |
+| Monitoring     | Better Stack (Logtail) | Logs + uptime monitoring, generous free tier                    |
+| Error tracking | Sentry                 | Free for small volumes, critical for production quality         |
 
 ### Environment Strategy
 
@@ -989,13 +1025,13 @@ Git push to main branch
 
 ### How This Architecture Scales
 
-| Component | Scale Strategy | When Needed |
-|---|---|---|
-| API server | Horizontal scale (add instances) | > 500 concurrent users |
-| PostgreSQL | Read replicas for reporting queries | > 5,000 users |
-| Redis | Redis Cluster | > 10,000 users |
-| BullMQ workers | Add worker processes | Import queue depth > 30s wait |
-| File storage | R2 scales automatically | Never a bottleneck |
+| Component      | Scale Strategy                      | When Needed                   |
+| -------------- | ----------------------------------- | ----------------------------- |
+| API server     | Horizontal scale (add instances)    | > 500 concurrent users        |
+| PostgreSQL     | Read replicas for reporting queries | > 5,000 users                 |
+| Redis          | Redis Cluster                       | > 10,000 users                |
+| BullMQ workers | Add worker processes                | Import queue depth > 30s wait |
+| File storage   | R2 scales automatically             | Never a bottleneck            |
 
 ### Database Indexing Strategy
 
@@ -1013,6 +1049,7 @@ CREATE INDEX idx_import_batch_user ON import_batches(user_id, imported_at DESC);
 ### Data Volume Estimates
 
 A typical family imports ~100-200 transactions/month. At 1,000 users:
+
 - ~150,000 transactions/month added
 - ~5M total transactions after 3 years per 1,000 users
 
@@ -1025,15 +1062,18 @@ PostgreSQL handles 100M+ rows comfortably with proper indexing. This is not a sc
 ### What Is In MVP (Build This, Nothing Else)
 
 **Auth**
+
 - [ ] Register with email + password
 - [ ] Login / Logout
 - [ ] JWT + Refresh token
 
 **Income**
+
 - [ ] Add monthly salary (manual entry)
 - [ ] Edit / delete income entries
 
 **Transactions**
+
 - [ ] Manual expense entry (amount, merchant, category, date, notes)
 - [ ] CSV import: Max (מקס) — first parser to build
 - [ ] CSV import: Cal (כאל) — second parser
@@ -1042,11 +1082,13 @@ PostgreSQL handles 100M+ rows comfortably with proper indexing. This is not a sc
 - [ ] Basic auto-categorization (rule-based, not ML)
 
 **Recurring Expenses (תשלומים קבועים)**
+
 - [ ] Define recurring expense (name, amount, merchant pattern, day of month)
 - [ ] Matching engine runs on import
 - [ ] Dashboard shows שולם / צפוי status per recurring item
 
 **Dashboard (תמונת מצב)**
+
 - [ ] Monthly income KPI
 - [ ] Monthly expenses KPI
 - [ ] Monthly balance KPI
@@ -1059,6 +1101,7 @@ PostgreSQL handles 100M+ rows comfortably with proper indexing. This is not a sc
 - [ ] 3-month historical comparison
 
 **Settings**
+
 - [ ] Profile management
 - [ ] Change password
 
@@ -1080,27 +1123,27 @@ PostgreSQL handles 100M+ rows comfortably with proper indexing. This is not a sc
 
 ## 16. Open Questions & Decisions Log
 
-| # | Question | Status | Decision |
-|---|---|---|---|
-| 1 | Monetization model | OPEN | Freemium likely, not yet decided |
-| 2 | Open banking integration (Israeli APIs) | DEFERRED | No mature Israeli open banking API exists yet |
-| 3 | Spouse mode data model | DEFERRED | Phase 3 — requires shared workspace concept |
-| 4 | PDF import feasibility | DEFERRED | Requires OCR — significant complexity |
-| 5 | Offline-first conflict resolution | DECIDED | LWW with timestamp; revisit if user reports data loss |
-| 6 | App name | OPEN | Placeholder: "קופת המשפחה" |
-| 7 | App Store distribution | OPEN | TestFlight for beta, public later |
-| 8 | GDPR applicability | DECIDED | Israeli Privacy Law applies; GDPR only if EU users targeted |
-| 9 | Max CSV encoding | PENDING | Verify with real sample — Windows-1255 or UTF-8? |
-| 10 | Cal installment column format | PENDING | Verify with real Cal CSV sample |
+| #   | Question                                | Status   | Decision                                                    |
+| --- | --------------------------------------- | -------- | ----------------------------------------------------------- |
+| 1   | Monetization model                      | OPEN     | Freemium likely, not yet decided                            |
+| 2   | Open banking integration (Israeli APIs) | DEFERRED | No mature Israeli open banking API exists yet               |
+| 3   | Spouse mode data model                  | DEFERRED | Phase 3 — requires shared workspace concept                 |
+| 4   | PDF import feasibility                  | DEFERRED | Requires OCR — significant complexity                       |
+| 5   | Offline-first conflict resolution       | DECIDED  | LWW with timestamp; revisit if user reports data loss       |
+| 6   | App name                                | OPEN     | Placeholder: "קופת המשפחה"                                  |
+| 7   | App Store distribution                  | OPEN     | TestFlight for beta, public later                           |
+| 8   | GDPR applicability                      | DECIDED  | Israeli Privacy Law applies; GDPR only if EU users targeted |
+| 9   | Max CSV encoding                        | PENDING  | Verify with real sample — Windows-1255 or UTF-8?            |
+| 10  | Cal installment column format           | PENDING  | Verify with real Cal CSV sample                             |
 
 ---
 
 ## Document Change Log
 
-| Version | Date | Changes |
-|---|---|---|
-| 1.0 | April 2026 | Initial draft — pre-development architecture session |
+| Version | Date       | Changes                                              |
+| ------- | ---------- | ---------------------------------------------------- |
+| 1.0     | April 2026 | Initial draft — pre-development architecture session |
 
 ---
 
-*Next Document: **02-data-model-and-schema.md** — Every table, every column, every relationship, every edge case.*
+_Next Document: **02-data-model-and-schema.md** — Every table, every column, every relationship, every edge case._

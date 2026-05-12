@@ -39,6 +39,7 @@ Branch protection is a universal good practice. The branch naming convention (`f
 **Decision: Adapt for Turborepo.**
 
 The gate logic is correct; the commands need adaptation:
+
 - Replace `npm test` with `turbo test` (or per-package: `turbo test --filter=<app>`)
 - Replace `npm run lint` with `turbo lint`
 - Replace `npm run format` with `turbo format`
@@ -92,6 +93,7 @@ The current project has two skills in `.claude/skills/`.
 **Applicable to Famileconomy?** Partially.
 
 **What needs to change:**
+
 - The skill is specific to Hebrew shopping categories and the Supabase `categories` table. Famileconomy uses PostgreSQL via Fastify/pg-migrate, not Supabase CLI.
 - **Reuse the pattern, not the content.** Create an analogous skill (e.g., `add-transaction-category`) that generates a pg-migrate migration file, applies it, and follows the same git workflow.
 - The step-by-step structure (clean branch → create migration → apply → commit → PR → merge → rebase previous branch) is excellent and should be copied verbatim in the new skill's SKILL.md.
@@ -113,21 +115,21 @@ The current project has two skills in `.claude/skills/`.
 
 ### Current CI Steps (from `.github/workflows/ci.yml`)
 
-| Step | What it does | Tool/Action | Famileconomy Priority | Adaptation needed |
-|---|---|---|---|---|
-| Format check | `prettier --check` | `npm run format:check` | Must-have day 1 | Replace with `turbo format:check` |
-| Lint | ESLint | `npm run lint` | Must-have day 1 | Replace with `turbo lint` |
-| Unit tests | Vitest | `npm run test` | Must-have day 1 | Replace with `turbo test` |
-| Build | `tsc + vite build` | `npm run build` | Must-have day 1 | Replace with `turbo build` (covers Next.js, Expo build check, API build) |
-| Security scan — Trivy | Filesystem vuln scan | `aquasecurity/trivy-action@v0.35.0`, HIGH+CRITICAL, exit-code 1 | Must-have day 1 | Same action, same config |
-| Security scan — Snyk | Dependency audit | `snyk/actions/node@master` | Must-have day 1 | Same action; add `--all-projects` flag for monorepo |
-| E2E tests | Playwright | `npm run test:e2e` | Add in phase 2 | Runs only on push to main; adapt webServer config for Next.js port |
+| Step                  | What it does         | Tool/Action                                                     | Famileconomy Priority | Adaptation needed                                                        |
+| --------------------- | -------------------- | --------------------------------------------------------------- | --------------------- | ------------------------------------------------------------------------ |
+| Format check          | `prettier --check`   | `npm run format:check`                                          | Must-have day 1       | Replace with `turbo format:check`                                        |
+| Lint                  | ESLint               | `npm run lint`                                                  | Must-have day 1       | Replace with `turbo lint`                                                |
+| Unit tests            | Vitest               | `npm run test`                                                  | Must-have day 1       | Replace with `turbo test`                                                |
+| Build                 | `tsc + vite build`   | `npm run build`                                                 | Must-have day 1       | Replace with `turbo build` (covers Next.js, Expo build check, API build) |
+| Security scan — Trivy | Filesystem vuln scan | `aquasecurity/trivy-action@v0.35.0`, HIGH+CRITICAL, exit-code 1 | Must-have day 1       | Same action, same config                                                 |
+| Security scan — Snyk  | Dependency audit     | `snyk/actions/node@master`                                      | Must-have day 1       | Same action; add `--all-projects` flag for monorepo                      |
+| E2E tests             | Playwright           | `npm run test:e2e`                                              | Add in phase 2        | Runs only on push to main; adapt webServer config for Next.js port       |
 
 ### Current Release Pipeline (from `.github/workflows/release-please.yml`)
 
-| Step | What it does | Tool/Action | Famileconomy Priority |
-|---|---|---|---|
-| Release Please | Auto-generates changelog + release PR from conventional commits | `googleapis/release-please-action@v4` | Must-have day 1 |
+| Step           | What it does                                                    | Tool/Action                           | Famileconomy Priority |
+| -------------- | --------------------------------------------------------------- | ------------------------------------- | --------------------- |
+| Release Please | Auto-generates changelog + release PR from conventional commits | `googleapis/release-please-action@v4` | Must-have day 1       |
 
 ---
 
@@ -350,12 +352,14 @@ jobs:
 ### ESLint
 
 **Current config summary:**
+
 - `eslint:recommended` + `@typescript-eslint/recommended` + `react-hooks/recommended`
 - `react-refresh/only-export-components` warn
 - `@typescript-eslint/no-unused-vars` error (args prefixed `_` ignored)
 - `--max-warnings 0` (zero-tolerance)
 
 **Recommended for Famileconomy:** Same base, extended with:
+
 - `plugin:@typescript-eslint/strict` instead of `recommended` (stricter for financial data)
 - `plugin:security/recommended` from `eslint-plugin-security` (relevant for a finance app)
 - `plugin:react-native/all` for the mobile package
@@ -363,6 +367,7 @@ jobs:
 - Keep `--max-warnings 0`
 
 **Setup:**
+
 ```bash
 npm install -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser \
   eslint-plugin-react-hooks eslint-plugin-react-refresh \
@@ -375,6 +380,7 @@ npm install -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser
 ### Prettier
 
 **Current config:**
+
 ```json
 {
   "semi": false,
@@ -390,9 +396,11 @@ npm install -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser
 **Recommended for Famileconomy:** Carry over exactly. This config has been stable and produces readable diffs. No adaptation needed.
 
 **Setup:**
+
 ```bash
 npm install -D prettier
 ```
+
 Copy `.prettierrc` verbatim.
 
 ---
@@ -400,6 +408,7 @@ Copy `.prettierrc` verbatim.
 ### TypeScript
 
 **Current config summary (`tsconfig.app.json`):**
+
 - `strict: true`
 - `noUnusedLocals: true`, `noUnusedParameters: true`
 - `noFallthroughCasesInSwitch: true`
@@ -407,11 +416,13 @@ Copy `.prettierrc` verbatim.
 - `noEmit: true`, `isolatedModules: true`
 
 **Recommended for Famileconomy:** Carry over the strictness flags. Add:
+
 - `"exactOptionalPropertyTypes": true` — prevents accidental `undefined` in financial amounts
 - `"noUncheckedIndexedAccess": true` — prevents silent undefined when accessing arrays by index
 - Per-package tsconfig inheritance from a shared `tsconfig.base.json` at the monorepo root
 
 **Setup:**
+
 ```bash
 # tsconfig.base.json at monorepo root
 {
@@ -431,17 +442,20 @@ Copy `.prettierrc` verbatim.
 ### Husky + lint-staged
 
 **Current config:**
+
 - `pre-commit`: runs `npm test` (full unit test suite — **flagged as slow below**)
 - `pre-push`: runs `trivy fs --severity HIGH,CRITICAL --exit-code 1 .`
 - `lint-staged`: ESLint --fix + Prettier on `*.{ts,tsx}`; Prettier on `*.{json,css}`
 
 **Recommended for Famileconomy:**
+
 - `pre-commit`: Run `lint-staged` only (not full tests — full tests in CI). Tests on pre-commit are slow enough that developers skip them.
 - `pre-push`: Keep `trivy` scan + add `npm run typecheck` (catch type errors before they reach CI)
 - `commit-msg`: Add `commitlint` for conventional commit enforcement (critical for release-please to work correctly)
 - Keep `lint-staged` config as-is
 
 **Setup:**
+
 ```bash
 npm install -D husky lint-staged @commitlint/cli @commitlint/config-conventional
 npx husky init
@@ -460,6 +474,7 @@ module.exports = { extends: ['@commitlint/config-conventional'] }
 ### Vitest
 
 **Current config:**
+
 - `globals: true`, `environment: 'jsdom'`, `css: true`
 - Setup file: `./src/test/setup.ts` (mocks Supabase globally)
 - Excludes: `node_modules`, `e2e/`
@@ -471,6 +486,7 @@ module.exports = { extends: ['@commitlint/config-conventional'] }
 ### Playwright
 
 **Current config:**
+
 - `testDir: ./e2e`, `fullyParallel: true`, `retries: 2` in CI
 - Projects: Desktop Chrome + iPhone 13 (Mobile Safari)
 - `webServer` starts the dev server automatically
@@ -483,10 +499,10 @@ module.exports = { extends: ['@commitlint/config-conventional'] }
 
 ### Existing Tools
 
-| Tool | What it scans | Config | Famileconomy |
-|---|---|---|---|
-| **Trivy** | Filesystem vulnerabilities (deps, secrets, configs) — HIGH + CRITICAL | `trivy-action@v0.35.0`, exit-code 1 | Keep exactly. Run in CI (security job) and on `pre-push` hook. |
-| **Snyk** | Known CVEs in npm dependencies | `snyk/actions/node@master`, `--severity-threshold=high`, `continue-on-error: true` | Keep. Change `continue-on-error` to `false` for a finance app — failing Snyk should block the PR. Add `--all-projects` flag for monorepo. |
+| Tool      | What it scans                                                         | Config                                                                             | Famileconomy                                                                                                                              |
+| --------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **Trivy** | Filesystem vulnerabilities (deps, secrets, configs) — HIGH + CRITICAL | `trivy-action@v0.35.0`, exit-code 1                                                | Keep exactly. Run in CI (security job) and on `pre-push` hook.                                                                            |
+| **Snyk**  | Known CVEs in npm dependencies                                        | `snyk/actions/node@master`, `--severity-threshold=high`, `continue-on-error: true` | Keep. Change `continue-on-error` to `false` for a finance app — failing Snyk should block the PR. Add `--all-projects` flag for monorepo. |
 
 **Important finding:** Snyk currently runs with `continue-on-error: true`, meaning a high-severity dependency vulnerability **will not block merges**. This is inappropriate for a financial app and must be fixed before going to production.
 
@@ -511,6 +527,7 @@ Never use `crypto.createHash('sha256')` or `bcrypt` for passwords in this projec
 #### 0b. One-time-use refresh token rotation
 
 **What it adds:** Refresh tokens are stored as a hash in the DB alongside the `deviceId` and a `revokedAt` field. On every token refresh:
+
 1. Look up the token hash in DB — if not found or `revokedAt` is set → revoke entire session.
 2. Issue new access token + new refresh token.
 3. Invalidate the old refresh token hash in DB immediately.
@@ -549,6 +566,7 @@ Audit logs must never be deleted by application code (only by an explicit retent
 **What it adds:** Catches known vulnerabilities in the npm dependency tree without requiring a Snyk token. Good first line of defense.
 
 **Config:**
+
 ```yaml
 - name: npm audit
   run: npm audit --audit-level=high
@@ -575,21 +593,22 @@ Not directly a security tool, but enforces conventional commit format which is r
 **What it adds:** Automated PRs for outdated/vulnerable dependencies. Especially important for a financial app where CVEs in auth libraries (JWT, bcrypt, etc.) need immediate patches.
 
 **Config file:** `.github/dependabot.yml`
+
 ```yaml
 version: 2
 updates:
-  - package-ecosystem: "npm"
-    directory: "/"
+  - package-ecosystem: 'npm'
+    directory: '/'
     schedule:
-      interval: "weekly"
+      interval: 'weekly'
     open-pull-requests-limit: 5
     labels:
-      - "security"
-      - "dependencies"
-  - package-ecosystem: "github-actions"
-    directory: "/"
+      - 'security'
+      - 'dependencies'
+  - package-ecosystem: 'github-actions'
+    directory: '/'
     schedule:
-      interval: "monthly"
+      interval: 'monthly'
 ```
 
 ---
@@ -599,6 +618,7 @@ updates:
 **What it adds:** Deep static analysis for injection attacks, path traversal, authentication bypass, and other code-level vulnerabilities. Very relevant for a finance app handling transaction data.
 
 **Config:** `.github/workflows/codeql.yml`
+
 ```yaml
 name: CodeQL Analysis
 on:
@@ -607,7 +627,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: '0 8 * * 1'  # weekly Monday
+    - cron: '0 8 * * 1' # weekly Monday
 
 jobs:
   analyze:
@@ -694,10 +714,12 @@ npm install @logtail/pino --workspace=api
 ```
 
 **Log destinations:**
+
 - Development: `pino-pretty` (human-readable stdout)
 - Staging/Production: JSON stdout → collected by Railway/Vercel log drains → shipped to Better Stack
 
 **What to log (with `info` level):**
+
 - Request completed: `{ requestId, userId, method, route, statusCode, durationMs }`
 - Import finished: `{ requestId, userId, batchId, imported, duplicates, matched, durationMs }`
 - Sync completed: `{ requestId, userId, pushed, pulled, conflicts, durationMs }`
@@ -705,11 +727,13 @@ npm install @logtail/pino --workspace=api
 - Auth event: `{ userId, event: 'login_success' | 'login_fail' | 'token_rotated' | 'session_revoked' }`
 
 **What to log at `warn` level:**
+
 - Validation error on API boundary (Zod rejection)
 - Retry triggered (DB connection retry, BullMQ job retry)
 - Rate limit hit: `{ ip, endpoint, limit }`
 
 **What to log at `error` level:**
+
 - Unhandled exception (include `err.stack` but never raw financial data)
 - Job failed after max retries: `{ jobId, queue, attempt, err.message }`
 
@@ -731,6 +755,7 @@ Auto-instrumentation covers: HTTP (Fastify), PostgreSQL (`pg`), Redis (`ioredis`
 **Free backend: Grafana Cloud free tier** — 50 GB traces/month, 14-day retention. Sign up at grafana.com (no credit card for free tier).
 
 **What to add manual spans for:**
+
 - Each BullMQ job: `csv-import`, `matching`, `forecast`, `notifications`
 - Each parser's `parse()` call: `max-parser.parse`, `cal-parser.parse`
 - The deduplication loop: `dedup.checkHash`
@@ -738,6 +763,7 @@ Auto-instrumentation covers: HTTP (Fastify), PostgreSQL (`pg`), Redis (`ioredis`
 - Each outbound call to R2 (upload, download, delete)
 
 **Span attributes to include (sanitized — no financial values):**
+
 - `user.id`, `import.batch_id`, `import.source`, `import.row_count`
 - `job.queue`, `job.id`, `job.attempt`
 - `db.operation`, `db.table` (not values)
@@ -754,18 +780,19 @@ Auto-instrumentation covers: HTTP (Fastify), PostgreSQL (`pg`), Redis (`ioredis`
 
 **Key metrics to instrument from day one:**
 
-| Metric | Type | Labels | Why |
-|---|---|---|---|
-| `http_request_duration_ms` | Histogram | `method`, `route`, `status_code` | P50/P95/P99 per endpoint |
-| `import_jobs_total` | Counter | `source`, `status` (success/dup/error) | Import reliability |
-| `import_rows_processed_total` | Counter | `source` | Data volume visibility |
-| `sync_duration_ms` | Histogram | `direction` (push/pull) | Sync performance |
-| `auth_attempts_total` | Counter | `result` (success/fail/rate_limited) | Detect credential stuffing |
-| `db_query_duration_ms` | Histogram | `operation`, `table` | Slow query detection |
-| `bullmq_queue_depth` | Gauge | `queue` | Worker scaling signal |
-| `bullmq_job_duration_ms` | Histogram | `queue`, `status` | Job performance |
+| Metric                        | Type      | Labels                                 | Why                        |
+| ----------------------------- | --------- | -------------------------------------- | -------------------------- |
+| `http_request_duration_ms`    | Histogram | `method`, `route`, `status_code`       | P50/P95/P99 per endpoint   |
+| `import_jobs_total`           | Counter   | `source`, `status` (success/dup/error) | Import reliability         |
+| `import_rows_processed_total` | Counter   | `source`                               | Data volume visibility     |
+| `sync_duration_ms`            | Histogram | `direction` (push/pull)                | Sync performance           |
+| `auth_attempts_total`         | Counter   | `result` (success/fail/rate_limited)   | Detect credential stuffing |
+| `db_query_duration_ms`        | Histogram | `operation`, `table`                   | Slow query detection       |
+| `bullmq_queue_depth`          | Gauge     | `queue`                                | Worker scaling signal      |
+| `bullmq_job_duration_ms`      | Histogram | `queue`, `status`                      | Job performance            |
 
 **Dashboards to create in Grafana (free):**
+
 1. API overview: request rate, error rate, P99 latency by route
 2. Import pipeline: jobs/min, row throughput, error rate, queue depth
 3. Auth security: login attempts, failures, rate-limit hits (last 24h)
@@ -786,16 +813,17 @@ npm install @sentry/react-native --workspace=mobile
 Initialize before Fastify registers any routes. Sentry captures unhandled exceptions, records the request context (route, method, status — never body), and links to the OTel trace ID.
 
 **Configuration:**
+
 ```typescript
 Sentry.init({
   dsn: process.env.SENTRY_DSN,
   environment: process.env.NODE_ENV,
-  tracesSampleRate: 0.1,  // 10% of requests traced to Sentry (use OTel for full traces)
+  tracesSampleRate: 0.1, // 10% of requests traced to Sentry (use OTel for full traces)
   beforeSend(event) {
     // Strip any financial data that might have leaked into the error context
     delete event.request?.data
     return event
-  }
+  },
 })
 ```
 
@@ -806,11 +834,13 @@ Sentry.init({
 **Tool: Better Stack** — free plan includes 10 monitors, 3-minute check interval, 90-day history, email/Slack alerts.
 
 **Monitors to set up from day one:**
+
 - API health: `GET https://api.famileconomy.app/health`
 - API readiness: `GET https://api.famileconomy.app/ready`
 - Web app: `GET https://famileconomy.app`
 
 **Alerts:**
+
 - Any monitor down → immediate email/Slack
 - API error rate > 1% over 5 min → alert (via log-based alert in Better Stack)
 - Import queue depth > 50 → alert (via metrics alert in Grafana)
@@ -819,13 +849,13 @@ Sentry.init({
 
 ### Tooling Summary Table
 
-| Pillar | Tool | Free Tier | When to Upgrade | Upgrade Path |
-|---|---|---|---|---|
-| Structured logging | `pino` + Better Stack | 1 GB/day, 3-day retention | > 1 GB/day or need 30+ day retention | Better Stack paid ($25/mo) or Grafana Loki |
-| Distributed tracing | OpenTelemetry + Grafana Tempo | 50 GB/mo, 14-day retention | Need > 14-day or SLA guarantees | Datadog APM / Honeycomb / self-hosted Jaeger |
-| Metrics | OpenTelemetry + Grafana Cloud | 10k series, 14-day retention | > 10k series or need longer retention | Grafana Cloud Pro / Datadog Metrics |
-| Error tracking | Sentry | 5k errors/mo, 1 project | > 5k errors/mo | Sentry Team ($26/mo) |
-| Uptime monitoring | Better Stack | 10 monitors, 3-min interval | Need < 1-min interval or SLA reporting | Better Stack paid |
+| Pillar              | Tool                          | Free Tier                    | When to Upgrade                        | Upgrade Path                                 |
+| ------------------- | ----------------------------- | ---------------------------- | -------------------------------------- | -------------------------------------------- |
+| Structured logging  | `pino` + Better Stack         | 1 GB/day, 3-day retention    | > 1 GB/day or need 30+ day retention   | Better Stack paid ($25/mo) or Grafana Loki   |
+| Distributed tracing | OpenTelemetry + Grafana Tempo | 50 GB/mo, 14-day retention   | Need > 14-day or SLA guarantees        | Datadog APM / Honeycomb / self-hosted Jaeger |
+| Metrics             | OpenTelemetry + Grafana Cloud | 10k series, 14-day retention | > 10k series or need longer retention  | Grafana Cloud Pro / Datadog Metrics          |
+| Error tracking      | Sentry                        | 5k errors/mo, 1 project      | > 5k errors/mo                         | Sentry Team ($26/mo)                         |
+| Uptime monitoring   | Better Stack                  | 10 monitors, 3-min interval  | Need < 1-min interval or SLA reporting | Better Stack paid                            |
 
 **Total free tier cost: $0.** All tools have production-grade free tiers sufficient for a private beta of hundreds of users.
 
@@ -852,6 +882,7 @@ Sentry.init({
 ### Current Versioning Approach
 
 The current project uses **release-please** with the `node` release type. Every `push` to `main` triggers the `release-please` GitHub Action, which:
+
 1. Reads all conventional commits since the last release tag
 2. Determines the version bump (MAJOR/MINOR/PATCH) from commit types
 3. Opens a "Release PR" with an updated `CHANGELOG.md` and bumped `package.json`
@@ -870,6 +901,7 @@ The current project uses **release-please** with the `node` release type. Every 
 **Monorepo versioning approach: Unified version** — one version number for the whole Famileconomy product (not per-package). Rationale: Famileconomy is a product, not a library. Users don't install individual packages; they use the app. A single version like `v1.2.0` is meaningful to users and simpler to communicate.
 
 **Conventional commit types for CHANGELOG:**
+
 - `feat:` → MINOR bump, appears in changelog under "Features"
 - `fix:` → PATCH bump, appears under "Bug Fixes"
 - `perf:` → PATCH bump, appears under "Performance"
@@ -896,17 +928,17 @@ The current project uses **release-please** with the `node` release type. Every 
     }
   },
   "changelog-sections": [
-    { "type": "feat",     "section": "Features" },
-    { "type": "fix",      "section": "Bug Fixes" },
-    { "type": "perf",     "section": "Performance" },
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance" },
     { "type": "refactor", "section": "Refactors" },
-    { "type": "docs",     "section": "Documentation", "hidden": false },
-    { "type": "security", "section": "Security",      "hidden": false },
-    { "type": "chore",    "section": "Chores",   "hidden": true },
-    { "type": "style",    "section": "Styles",   "hidden": true },
-    { "type": "test",     "section": "Tests",    "hidden": true },
-    { "type": "ci",       "section": "CI",       "hidden": true },
-    { "type": "build",    "section": "Build",    "hidden": true }
+    { "type": "docs", "section": "Documentation", "hidden": false },
+    { "type": "security", "section": "Security", "hidden": false },
+    { "type": "chore", "section": "Chores", "hidden": true },
+    { "type": "style", "section": "Styles", "hidden": true },
+    { "type": "test", "section": "Tests", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "build", "section": "Build", "hidden": true }
   ]
 }
 ```
@@ -955,6 +987,7 @@ src/
 ```
 
 **Carry to Famileconomy:** Adapt per package. In a Turborepo monorepo:
+
 ```
 apps/
   web/src/           — same structure as above (Next.js pages)
@@ -999,10 +1032,10 @@ Form validation schemas live in `src/lib/schemas.ts` alongside their inferred Ty
 
 ```ts
 export const transferSchema = z.object({
-  amount: z.number().int().positive(),  // always cents, never floats
+  amount: z.number().int().positive(), // always cents, never floats
   from_account_id: z.string().uuid(),
-  to_account_id:   z.string().uuid(),
-  note:            z.string().max(500).optional(),
+  to_account_id: z.string().uuid(),
+  note: z.string().max(500).optional(),
 })
 export type TransferData = z.infer<typeof transferSchema>
 ```
@@ -1022,7 +1055,7 @@ In Famileconomy, schemas live in the shared `@famileconomy/types` package so fro
 // Pattern used in current project
 const { data: lists } = useQuery({
   queryKey: ['shopping_lists', user.id],
-  queryFn: () => supabase.from('shopping_lists').select('...').eq('owner_id', user.id)
+  queryFn: () => supabase.from('shopping_lists').select('...').eq('owner_id', user.id),
 })
 ```
 
@@ -1123,7 +1156,9 @@ The current project injects `package.json` version into the app at build time vi
 
 ```ts
 // vite.config.ts
-define: { __APP_VERSION__: JSON.stringify(version) }
+define: {
+  __APP_VERSION__: JSON.stringify(version)
+}
 ```
 
 Carry this to Famileconomy. In Next.js: use `NEXT_PUBLIC_APP_VERSION` env var set from `package.json` in the build script. In Expo: use `app.json` `version` field.
@@ -1133,6 +1168,7 @@ Carry this to Famileconomy. In Next.js: use `NEXT_PUBLIC_APP_VERSION` env var se
 ### Commit Message Convention
 
 The project uses conventional commits throughout. Branch naming and commit types from the git log:
+
 - `feat(scope):` — new feature
 - `fix(scope):` — bug fix
 - `perf(scope):` — performance improvement
@@ -1154,6 +1190,7 @@ The `scope` is the feature area in parentheses: `feat(transactions):`, `fix(auth
 **Leave behind. Do not use for Famileconomy.**
 
 Supabase (BaaS) was appropriate for a small personal project with no server-side business logic. Famileconomy requires:
+
 - Custom financial calculation logic (budgets, projections, recurring transactions, FX rates)
 - Strict audit logging (every penny must be traceable)
 - Multi-tenant row isolation that must be enforced at the application layer, not just RLS policies
@@ -1355,27 +1392,27 @@ mobile app, and a Node.js/Fastify API backed by PostgreSQL.
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Monorepo | Turborepo |
-| Web | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui |
-| Mobile | Expo (React Native), TypeScript |
-| Shared components | `@famileconomy/ui` (packages/ui) |
-| Shared types | `@famileconomy/types` (packages/types) |
-| Server state | TanStack Query v5 |
-| Client state | Zustand |
-| Forms | React Hook Form + Zod |
-| API | Node.js, Fastify, TypeScript |
-| Database | PostgreSQL (direct, no ORM wrapper) |
-| Migrations | node-pg-migrate |
-| Auth | Fastify + JWT (httpOnly cookies) |
-| i18n | i18next + react-i18next (Hebrew RTL + English LTR) |
-| Unit tests | Vitest + React Testing Library |
-| E2E tests (web) | Playwright |
-| E2E tests (mobile) | Maestro |
-| CI | GitHub Actions |
-| Deploy — web | Vercel |
-| Deploy — API | Railway |
+| Layer              | Technology                                         |
+| ------------------ | -------------------------------------------------- |
+| Monorepo           | Turborepo                                          |
+| Web                | Next.js 14, TypeScript, Tailwind CSS, shadcn/ui    |
+| Mobile             | Expo (React Native), TypeScript                    |
+| Shared components  | `@famileconomy/ui` (packages/ui)                   |
+| Shared types       | `@famileconomy/types` (packages/types)             |
+| Server state       | TanStack Query v5                                  |
+| Client state       | Zustand                                            |
+| Forms              | React Hook Form + Zod                              |
+| API                | Node.js, Fastify, TypeScript                       |
+| Database           | PostgreSQL (direct, no ORM wrapper)                |
+| Migrations         | node-pg-migrate                                    |
+| Auth               | Fastify + JWT (httpOnly cookies)                   |
+| i18n               | i18next + react-i18next (Hebrew RTL + English LTR) |
+| Unit tests         | Vitest + React Testing Library                     |
+| E2E tests (web)    | Playwright                                         |
+| E2E tests (mobile) | Maestro                                            |
+| CI                 | GitHub Actions                                     |
+| Deploy — web       | Vercel                                             |
+| Deploy — API       | Railway                                            |
 
 ## Model Usage
 
@@ -1427,12 +1464,14 @@ After completing any change, always verify:
 ## Coding Conventions
 
 ### TypeScript
+
 - `strict: true` is mandatory. Never use `any`. Use `unknown` and narrow it.
 - `exactOptionalPropertyTypes: true` is enabled — do not assign `undefined` to optional fields.
 - `noUncheckedIndexedAccess: true` is enabled — always check array index access for undefined.
 - Import types with `import type { ... }` to avoid importing runtime values as types.
 
 ### Naming
+
 - Components: PascalCase (`TransactionCard`)
 - Hooks: `use` prefix + camelCase (`useTransactions`, `useActiveAccount`)
 - Utility functions: camelCase (`formatCurrency`, `toCents`)
@@ -1442,15 +1481,17 @@ After completing any change, always verify:
 
 ### File Structure (per app/package)
 ```
+
 src/
-  __tests__/      — unit tests (logic functions)
-  components/
-    layout/       — shared layout
-  hooks/          — custom React hooks
-  lib/            — pure utilities, API client, queryClient, schemas
-  pages/ (web) or screens/ (mobile) — one folder per domain
-  store/          — Zustand stores
-  types/          — DB types + enriched types (use @famileconomy/types for shared types)
+**tests**/ — unit tests (logic functions)
+components/
+layout/ — shared layout
+hooks/ — custom React hooks
+lib/ — pure utilities, API client, queryClient, schemas
+pages/ (web) or screens/ (mobile) — one folder per domain
+store/ — Zustand stores
+types/ — DB types + enriched types (use @famileconomy/types for shared types)
+
 ```
 
 ### Component Structure
@@ -1534,4 +1575,4 @@ This is especially important for: financial calculation logic, sharing/permissio
 
 ---
 
-*This document was produced by inspecting every file in `shopping-recipes-events` v0.10.0 on 2026-04-25. Save as `docs/00-project-bootstrap.md` in the Famileconomy repository.*
+_This document was produced by inspecting every file in `shopping-recipes-events` v0.10.0 on 2026-04-25. Save as `docs/00-project-bootstrap.md` in the Famileconomy repository._

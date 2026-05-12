@@ -15,6 +15,13 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['node_modules/**', '.next/**', 'dist/**', 'coverage/**', '**/*.config.js', '**/*.config.ts'],
+    ignores: [
+      'node_modules/**',
+      '.next/**',
+      'dist/**',
+      'coverage/**',
+      '**/*.config.js',
+      '**/*.config.ts',
+    ],
   }
 )
