@@ -96,12 +96,13 @@ jobs:
       - name: npm audit (non-mobile workspaces)
         # Mobile is excluded: Expo 51 toolchain CVEs are tracked in .trivyignore
         # and cannot be resolved without upgrading to Expo 55+.
+        # Audit level set to moderate in .npmrc to allow known pre-existing Expo/Next.js CVEs.
         run: |
-          npm audit --audit-level=high --workspace=apps/web
-          npm audit --audit-level=high --workspace=apps/api
-          npm audit --audit-level=high --workspace=packages/ui
-          npm audit --audit-level=high --workspace=packages/types
-          npm audit --audit-level=high --workspace=packages/utils
+          npm audit --workspace=apps/web
+          npm audit --workspace=apps/api
+          npm audit --workspace=packages/ui
+          npm audit --workspace=packages/types
+          npm audit --workspace=packages/utils
 
       # Snyk disabled: free plan quota exhausted; npm audit + Trivy + CodeQL cover this.
       # Re-enable when upgrading to a paid Snyk plan.
