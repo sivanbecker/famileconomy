@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { type Dispatch, type SetStateAction, useMemo, useState, useRef, useEffect } from 'react'
 import {
   Search,
   X,
@@ -372,6 +372,14 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
   )
 }
 
+// ─── Chip state ───────────────────────────────────────────────────────────────
+
+type ChipState = 'off' | 'highlight' | 'exclusive'
+
+function cycleChip(set: Dispatch<SetStateAction<ChipState>>) {
+  set(s => (s === 'off' ? 'highlight' : s === 'highlight' ? 'exclusive' : 'off'))
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
@@ -390,8 +398,8 @@ export default function ExpensesPage() {
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
-  const [showStandingOrdersOnly, setShowStandingOrdersOnly] = useState(false)
-  const [showInstallmentsOnly, setShowInstallmentsOnly] = useState(false)
+  const [standingOrdersChip, setStandingOrdersChip] = useState<ChipState>('off')
+  const [installmentsChip, setInstallmentsChip] = useState<ChipState>('off')
 
   const userId = user?.id
 
@@ -469,22 +477,31 @@ export default function ExpensesPage() {
     return { totalExpenses, anomalyCount, withinFileDupCount: suspectedDupIds.size }
   }, [transactions, categoryAverages, suspectedDupIds])
 
-  // Filtered list (apply client-side toggles on top of server-filtered list)
+  // Filtered + highlighted lists
   const displayedTransactions = useMemo(() => {
     let result = transactions
     if (showDuplicatesOnly) result = result.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
-    if (showStandingOrdersOnly)
+    if (standingOrdersChip === 'exclusive')
       result = result.filter((tx: Transaction) => tx.notes?.includes('הוראת קבע'))
-    if (showInstallmentsOnly)
+    if (installmentsChip === 'exclusive')
       result = result.filter((tx: Transaction) => tx.installmentNum !== null)
     return result
-  }, [
-    transactions,
-    showDuplicatesOnly,
-    showStandingOrdersOnly,
-    showInstallmentsOnly,
-    suspectedDupIds,
-  ])
+  }, [transactions, showDuplicatesOnly, standingOrdersChip, installmentsChip, suspectedDupIds])
+
+  const highlightedIds = useMemo(() => {
+    const ids = new Set<string>()
+    if (standingOrdersChip === 'highlight') {
+      for (const tx of transactions) {
+        if (tx.notes?.includes('הוראת קבע')) ids.add(tx.id)
+      }
+    }
+    if (installmentsChip === 'highlight') {
+      for (const tx of transactions) {
+        if (tx.installmentNum !== null) ids.add(tx.id)
+      }
+    }
+    return ids
+  }, [transactions, standingOrdersChip, installmentsChip])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -514,8 +531,8 @@ export default function ExpensesPage() {
     setMinAmount('')
     setMaxAmount('')
     setShowDuplicatesOnly(false)
-    setShowStandingOrdersOnly(false)
-    setShowInstallmentsOnly(false)
+    setStandingOrdersChip('off')
+    setInstallmentsChip('off')
   }
 
   const hasFilters =
@@ -524,8 +541,8 @@ export default function ExpensesPage() {
     minAmount ||
     maxAmount ||
     showDuplicatesOnly ||
-    showStandingOrdersOnly ||
-    showInstallmentsOnly
+    standingOrdersChip !== 'off' ||
+    installmentsChip !== 'off'
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -630,35 +647,55 @@ export default function ExpensesPage() {
           />
         </div>
 
-        {/* Notes-based filter chips */}
+        {/* Notes-based filter chips — off → highlight → exclusive → off */}
         {standingOrderCount > 0 && (
           <button
-            onClick={() => setShowStandingOrdersOnly(v => !v)}
+            onClick={() => cycleChip(setStandingOrdersChip)}
+            title={
+              standingOrdersChip === 'off'
+                ? 'לחץ להדגשת הוראות קבע'
+                : standingOrdersChip === 'highlight'
+                  ? 'לחץ להצגת הוראות קבע בלבד'
+                  : 'לחץ לביטול הסינון'
+            }
             className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              showStandingOrdersOnly
-                ? 'border-primary bg-primary/15 text-primary'
-                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+              standingOrdersChip === 'exclusive'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : standingOrdersChip === 'highlight'
+                  ? 'border-primary bg-primary/15 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
             }`}
           >
+            {standingOrdersChip === 'exclusive'
+              ? '▣'
+              : standingOrdersChip === 'highlight'
+                ? '●'
+                : '○'}
             הוראת קבע
-            <span className="rounded-full bg-current/10 px-1.5 py-0.5 tabular-nums opacity-70">
-              {standingOrderCount}
-            </span>
+            <span className="tabular-nums opacity-70">{standingOrderCount}</span>
           </button>
         )}
         {installmentCount > 0 && (
           <button
-            onClick={() => setShowInstallmentsOnly(v => !v)}
+            onClick={() => cycleChip(setInstallmentsChip)}
+            title={
+              installmentsChip === 'off'
+                ? 'לחץ להדגשת תשלומים'
+                : installmentsChip === 'highlight'
+                  ? 'לחץ להצגת תשלומים בלבד'
+                  : 'לחץ לביטול הסינון'
+            }
             className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              showInstallmentsOnly
-                ? 'border-primary bg-primary/15 text-primary'
-                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+              installmentsChip === 'exclusive'
+                ? 'border-primary bg-primary text-primary-foreground'
+                : installmentsChip === 'highlight'
+                  ? 'border-primary bg-primary/15 text-primary'
+                  : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
             }`}
           >
+            {installmentsChip === 'exclusive' ? '▣' : installmentsChip === 'highlight' ? '●' : '○'}
             תשלומים
-            <span className="rounded-full bg-current/10 px-1.5 py-0.5 tabular-nums opacity-70">
-              {installmentCount}
-            </span>
+            <span className="tabular-nums opacity-70">{installmentCount}</span>
           </button>
         )}
 
@@ -749,12 +786,17 @@ export default function ExpensesPage() {
                 displayedTransactions.map(tx => {
                   const anomaly = isAnomaly(tx, categoryAverages)
                   const isSuspectedDup = suspectedDupIds.has(tx.id)
+                  const isHighlighted = highlightedIds.has(tx.id)
                   const isCredit = tx.amountAgorot < 0
                   return (
                     <tr
                       key={tx.id}
                       className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isSuspectedDup ? 'bg-warning/5' : anomaly ? 'bg-warning/5' : ''
+                        isHighlighted
+                          ? 'border-s-2 border-s-primary bg-primary/5'
+                          : isSuspectedDup || anomaly
+                            ? 'bg-warning/5'
+                            : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
