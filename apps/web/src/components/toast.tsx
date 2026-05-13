@@ -64,7 +64,10 @@ export function ToastContainer() {
   if (messages.length === 0) return null
 
   return (
-    <div aria-live="polite" className="fixed bottom-4 start-4 z-[100] flex flex-col gap-2">
+    <div
+      aria-live="polite"
+      className="fixed bottom-24 start-4 z-[100] flex flex-col gap-2 lg:bottom-4"
+    >
       {messages.map(t => (
         <div
           key={t.id}

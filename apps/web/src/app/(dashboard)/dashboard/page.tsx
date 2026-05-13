@@ -1,7 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react'
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  PiggyBank,
+  BarChart2,
+  RefreshCw,
+  AlertCircle,
+} from 'lucide-react'
 import { categoryBreakdown } from '@famileconomy/utils'
 import { MonthNavigator } from '../../../components/month-navigator'
 import { KpiCard } from '../../../components/kpi-card'
@@ -21,12 +29,11 @@ export default function DashboardPage() {
   const { activeAccountId } = useAccountStore()
 
   const userId = user?.id
-  const { data: transactions = [], isLoading: txLoading } = useTransactions(
-    activeAccountId,
-    year,
-    month,
-    userId
-  )
+  const {
+    data: transactions = [],
+    isLoading: txLoading,
+    isError: txError,
+  } = useTransactions(activeAccountId, year, month, userId)
   const { data: summary, isLoading: summaryLoading } = useMonthSummary(
     activeAccountId,
     year,
@@ -57,8 +64,8 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-bold">תמונת מצב חודשית</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-display-sm">תמונת מצב חודשית</h1>
         <div className="flex items-center gap-3">
           {user && <AccountSelector userId={user.id} />}
           <MonthNavigator year={year} month={month} onPrev={handlePrev} onNext={handleNext} />
@@ -94,6 +101,14 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* ── Fetch error ── */}
+      {txError && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>לא ניתן לטעון נתונים. בדוק את החיבור לרשת ונסה שוב.</span>
+        </div>
+      )}
+
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <div className="flex min-h-64 flex-col gap-2 rounded-lg bg-surface p-4 shadow-card-md">
@@ -102,7 +117,16 @@ export default function DashboardPage() {
         </div>
         <div className="flex min-h-64 flex-col gap-2 rounded-lg bg-surface p-4 shadow-card-md">
           <h2 className="font-semibold">צפי להוצאות עד סוף החודש</h2>
-          <p className="mt-auto text-sm text-muted-foreground">ייבא עסקאות כדי לראות את הגרף.</p>
+          <div className="mt-auto flex flex-col items-center gap-3 py-6 text-center">
+            <BarChart2 className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">אין מספיק נתונים להצגת צפי.</p>
+            <a
+              href="/dashboard/expenses"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              ייבא עסקאות
+            </a>
+          </div>
         </div>
       </div>
 
@@ -118,7 +142,16 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card-md">
           <h2 className="font-semibold">תשלומים קבועים החודש</h2>
-          <p className="text-sm text-muted-foreground">לא הוגדרו תשלומים קבועים.</p>
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <RefreshCw className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">לא הוגדרו תשלומים קבועים עדיין.</p>
+            <a
+              href="/dashboard/recurring"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              הגדר תשלומים קבועים
+            </a>
+          </div>
         </div>
       </div>
     </div>

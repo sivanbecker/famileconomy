@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronsUpDown,
   AlertTriangle,
+  AlertCircle,
   Copy,
   MessageSquare,
   Plus,
@@ -148,7 +149,7 @@ function CategoryCell({ tx, userId, onMutate, isPending }: CategoryCellProps) {
     <button
       className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
       onClick={() => setEditing(true)}
-      title="לחץ לעריכת קטגוריה"
+      aria-label={`ערוך קטגוריה: ${tx.category ?? 'ללא קטגוריה'}`}
     >
       {tx.category ?? 'ללא קטגוריה'}
     </button>
@@ -221,7 +222,7 @@ function NoteItem({ note, userId, transactionId }: NoteItemProps) {
         ) : (
           <p className="whitespace-pre-wrap text-xs">{note.body}</p>
         )}
-        <p className="mt-0.5 text-[10px] text-muted-foreground">{date}</p>
+        <p className="mt-0.5 text-label-xs text-muted-foreground">{date}</p>
       </div>
       <div className="flex shrink-0 items-start gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         {editing ? (
@@ -323,8 +324,9 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
       {open && (
         <div
           ref={dialogRef}
-          className="absolute end-0 top-6 z-50 w-72 rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
-          style={{ minWidth: '260px' }}
+          role="dialog"
+          aria-label="הערות לעסקה"
+          className="absolute end-0 top-6 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
         >
           <p className="mb-2 text-xs font-semibold text-muted-foreground">הערות</p>
 
@@ -400,13 +402,11 @@ export default function ExpensesPage() {
     return f
   }, [search, categoryFilter, minAmount, maxAmount, sortBy, sortDir])
 
-  const { data: transactions = [], isLoading } = useExpenses(
-    activeAccountId,
-    year,
-    month,
-    filters,
-    userId
-  )
+  const {
+    data: transactions = [],
+    isLoading,
+    isError,
+  } = useExpenses(activeAccountId, year, month, filters, userId)
 
   const { mutate: updateCategory, isPending: isCategoryPending } = useUpdateCategory(
     activeAccountId,
@@ -498,8 +498,8 @@ export default function ExpensesPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-bold">הוצאות</h1>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-display-sm">הוצאות</h1>
         <div className="flex items-center gap-3">
           {user && <AccountSelector userId={user.id} />}
           <MonthNavigator year={year} month={month} onPrev={handlePrev} onNext={handleNext} />
@@ -517,11 +517,11 @@ export default function ExpensesPage() {
           <p className="text-lg font-bold">{transactions.length}</p>
         </div>
         {stats.anomalyCount > 0 && (
-          <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-4 py-3 shadow-card-md">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 shadow-card-md">
+            <AlertTriangle className="h-4 w-4 text-warning" />
             <div>
               <p className="text-xs text-muted-foreground">חריגות</p>
-              <p className="text-lg font-bold text-yellow-500">{stats.anomalyCount}</p>
+              <p className="text-lg font-bold text-warning">{stats.anomalyCount}</p>
             </div>
           </div>
         )}
@@ -530,18 +530,26 @@ export default function ExpensesPage() {
             onClick={() => setShowDuplicatesOnly(v => !v)}
             className={`flex items-center gap-2 rounded-lg px-4 py-3 shadow-card-md transition-colors ${
               showDuplicatesOnly
-                ? 'bg-orange-500/20 ring-1 ring-orange-500/60'
-                : 'bg-orange-500/10 hover:bg-orange-500/15'
+                ? 'bg-warning/20 ring-1 ring-warning/60'
+                : 'bg-warning/10 hover:bg-warning/15'
             }`}
           >
-            <Copy className="h-4 w-4 text-orange-500" />
+            <Copy className="h-4 w-4 text-warning" />
             <div className="text-start">
               <p className="text-xs text-muted-foreground">כפולות חשודות</p>
-              <p className="text-lg font-bold text-orange-500">{stats.withinFileDupCount}</p>
+              <p className="text-lg font-bold text-warning">{stats.withinFileDupCount}</p>
             </div>
           </button>
         )}
       </div>
+
+      {/* ── Fetch error ── */}
+      {isError && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>לא ניתן לטעון נתונים. בדוק את החיבור לרשת ונסה שוב.</span>
+        </div>
+      )}
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface p-4 shadow-card-md">
@@ -571,22 +579,22 @@ export default function ExpensesPage() {
           ))}
         </select>
 
-        {/* Amount range */}
-        <div className="flex items-center gap-1">
+        {/* Amount range — full-width on mobile so it doesn't squeeze inline */}
+        <div className="flex w-full items-center gap-1 sm:w-auto">
           <input
             type="number"
             placeholder="מינ׳ ₪"
             value={minAmount}
             onChange={e => setMinAmount(e.target.value)}
-            className="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary sm:w-24"
           />
-          <span className="text-muted-foreground">—</span>
+          <span className="shrink-0 text-muted-foreground">—</span>
           <input
             type="number"
             placeholder="מקס׳ ₪"
             value={maxAmount}
             onChange={e => setMaxAmount(e.target.value)}
-            className="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary sm:w-24"
           />
         </div>
 
@@ -624,7 +632,7 @@ export default function ExpensesPage() {
                     תיאור <SortIcon field="description" sortBy={sortBy} sortDir={sortDir} />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-start">
+                <th className="hidden px-4 py-3 text-start sm:table-cell">
                   <button
                     className="flex items-center gap-1 hover:text-foreground"
                     onClick={() => handleSort('category')}
@@ -632,7 +640,7 @@ export default function ExpensesPage() {
                     קטגוריה <SortIcon field="category" sortBy={sortBy} sortDir={sortDir} />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-start">כרטיס</th>
+                <th className="hidden px-4 py-3 text-start sm:table-cell">כרטיס</th>
                 <th className="px-4 py-3 text-end">
                   <button
                     className="flex items-center gap-1 hover:text-foreground ms-auto"
@@ -653,10 +661,10 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3">
                       <div className="h-4 w-40 animate-pulse rounded bg-surface-2" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden px-4 py-3 sm:table-cell">
                       <div className="h-5 w-16 animate-pulse rounded-full bg-surface-2" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden px-4 py-3 sm:table-cell">
                       <div className="h-5 w-12 animate-pulse rounded-full bg-surface-2" />
                     </td>
                     <td className="px-4 py-3 text-end">
@@ -682,27 +690,27 @@ export default function ExpensesPage() {
                     <tr
                       key={tx.id}
                       className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isSuspectedDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
+                        isSuspectedDup ? 'bg-warning/5' : anomaly ? 'bg-warning/5' : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {tx.transactionDate}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="min-w-0 px-4 py-3">
                         <div className="flex items-center gap-2">
                           {isSuspectedDup && (
                             <span title="עסקה חשודה ככפולה בתוך הקובץ">
-                              <Copy className="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
+                              <Copy className="h-3.5 w-3.5 flex-shrink-0 text-warning" />
                             </span>
                           )}
                           {anomaly && !isSuspectedDup && (
                             <span title="סכום חריג לקטגוריה זו">
-                              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
+                              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-warning" />
                             </span>
                           )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="max-w-64 truncate font-medium">
+                              <span className="truncate font-medium sm:max-w-64">
                                 {tx.description}
                               </span>
                               {tx.installmentNum !== null && tx.installmentOf !== null && (
@@ -712,14 +720,14 @@ export default function ExpensesPage() {
                               )}
                             </div>
                             {tx.notes && (
-                              <p className="max-w-64 truncate text-xs text-muted-foreground">
+                              <p className="truncate text-xs text-muted-foreground sm:max-w-64">
                                 {tx.notes}
                               </p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="hidden px-4 py-3 sm:table-cell">
                         <div className="flex items-center gap-1.5">
                           {user && (
                             <CategoryCell
@@ -734,7 +742,7 @@ export default function ExpensesPage() {
                           {user && <NotesButton transactionId={tx.id} userId={user.id} />}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="hidden px-4 py-3 sm:table-cell">
                         {tx.cardLastFour && (
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${cardColor(tx.cardLastFour)}`}

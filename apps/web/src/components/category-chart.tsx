@@ -6,17 +6,18 @@ import type { CategoryBreakdownSlice } from '@famileconomy/utils'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const CHART_COLORS = [
-  'hsl(var(--chart-1))',
-  'hsl(var(--chart-2))',
-  'hsl(var(--chart-3))',
-  'hsl(var(--chart-4))',
-  'hsl(var(--chart-5))',
-]
+const CHART_VAR_NAMES = ['--chart-1', '--chart-2', '--chart-3', '--chart-4', '--chart-5'] as const
 
-function sliceColor(index: number): string {
-  const fallback = 'hsl(var(--chart-1))'
-  return CHART_COLORS[index % CHART_COLORS.length] ?? fallback
+// Resolves CSS custom properties at runtime so SVG fill attributes receive
+// computed values rather than unresolvable hsl(oklch(…)) strings.
+function resolveChartColors(): string[] {
+  if (typeof window === 'undefined') return CHART_VAR_NAMES.map(() => 'currentColor')
+  const style = getComputedStyle(document.documentElement)
+  return CHART_VAR_NAMES.map(v => style.getPropertyValue(v).trim() || 'currentColor')
+}
+
+function sliceColor(index: number, colors: string[]): string {
+  return colors[index % colors.length] ?? colors[0] ?? 'currentColor'
 }
 
 // ─── Custom tooltip ──────────────────────────────────────────────────────────
@@ -56,7 +57,7 @@ export function CategoryChart({ slices, isLoading = false }: CategoryChartProps)
   if (isLoading) {
     return (
       <div className="flex h-48 items-center justify-center">
-        <div className="h-32 w-32 animate-pulse rounded-full bg-surface-2" />
+        <div className="h-32 w-32 animate-pulse motion-reduce:animate-none rounded-full bg-surface-2" />
       </div>
     )
   }
@@ -66,6 +67,7 @@ export function CategoryChart({ slices, isLoading = false }: CategoryChartProps)
   }
 
   const chartData = slices.map(s => ({ name: s.category, value: s.amountAgorot, ...s }))
+  const colors = resolveChartColors()
 
   return (
     <ResponsiveContainer width="100%" height={220}>
@@ -80,7 +82,7 @@ export function CategoryChart({ slices, isLoading = false }: CategoryChartProps)
           dataKey="value"
         >
           {chartData.map((_, index) => (
-            <Cell key={index} fill={sliceColor(index)} />
+            <Cell key={index} fill={sliceColor(index, colors)} />
           ))}
         </Pie>
         <Tooltip content={<CustomTooltip />} />

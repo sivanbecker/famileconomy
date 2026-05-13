@@ -44,12 +44,12 @@ export default function LoginPage() {
         className="flex w-full max-w-sm flex-col gap-4 p-8"
         noValidate
       >
-        <h1 className="text-2xl font-bold">התחברות</h1>
+        <h1 className="text-display-md">התחברות</h1>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="email">אימייל</label>
           <Input id="email" type="email" autoComplete="email" {...register('email')} />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -60,11 +60,11 @@ export default function LoginPage() {
             autoComplete="current-password"
             {...register('password')}
           />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+          {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         </div>
 
         {errors.root && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.root.message}
           </p>
         )}
