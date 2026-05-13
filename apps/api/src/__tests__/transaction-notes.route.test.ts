@@ -201,8 +201,7 @@ describe('DELETE /transactions/:id/notes/:noteId', () => {
   it('returns 204 on successful delete', async () => {
     const res = await app.inject({
       method: 'DELETE',
-      url: `/transactions/${TX_ID}/notes/${NOTE_ID}`,
-      payload: { userId: USER_ID },
+      url: `/transactions/${TX_ID}/notes/${NOTE_ID}?userId=${USER_ID}`,
     })
     expect(res.statusCode).toBe(204)
   })
@@ -211,8 +210,7 @@ describe('DELETE /transactions/:id/notes/:noteId', () => {
     vi.mocked(prisma.transactionNote.findFirst).mockResolvedValue(null)
     const res = await app.inject({
       method: 'DELETE',
-      url: `/transactions/${TX_ID}/notes/${NOTE_ID}`,
-      payload: { userId: USER_ID },
+      url: `/transactions/${TX_ID}/notes/${NOTE_ID}?userId=${USER_ID}`,
     })
     expect(res.statusCode).toBe(404)
   })
@@ -223,8 +221,7 @@ describe('DELETE /transactions/:id/notes/:noteId', () => {
     )
     const res = await app.inject({
       method: 'DELETE',
-      url: `/transactions/${TX_ID}/notes/${NOTE_ID}`,
-      payload: { userId: USER_ID },
+      url: `/transactions/${TX_ID}/notes/${NOTE_ID}?userId=${USER_ID}`,
     })
     expect(res.statusCode).toBe(403)
   })
@@ -232,8 +229,7 @@ describe('DELETE /transactions/:id/notes/:noteId', () => {
   it('writes an audit log entry on success', async () => {
     await app.inject({
       method: 'DELETE',
-      url: `/transactions/${TX_ID}/notes/${NOTE_ID}`,
-      payload: { userId: USER_ID },
+      url: `/transactions/${TX_ID}/notes/${NOTE_ID}?userId=${USER_ID}`,
     })
     expect(vi.mocked(prisma.auditLog.create)).toHaveBeenCalledWith(
       expect.objectContaining({

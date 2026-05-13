@@ -73,7 +73,7 @@ export function useDeleteNote(transactionId: string) {
   return useMutation({
     mutationFn: async ({ noteId, userId }: { noteId: string; userId: string }) => {
       await apiClient.delete(`/transactions/${transactionId}/notes/${noteId}`, {
-        data: { userId },
+        params: { userId },
       })
     },
     onSuccess: () => {

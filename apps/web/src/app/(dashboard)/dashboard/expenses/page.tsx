@@ -174,6 +174,10 @@ function NoteItem({ note, userId, transactionId }: NoteItemProps) {
     if (editing) textareaRef.current?.focus()
   }, [editing])
 
+  useEffect(() => {
+    if (!editing) setDraft(note.body)
+  }, [note.body, editing])
+
   function handleSave() {
     if (!draft.trim() || draft === note.body) {
       setEditing(false)

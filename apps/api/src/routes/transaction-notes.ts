@@ -18,7 +18,7 @@ const patchNoteSchema = z.object({
   body: z.string().min(1).max(2000),
 })
 
-const deleteNoteSchema = z.object({
+const deleteNoteQuerySchema = z.object({
   userId: z.string().uuid(),
 })
 
@@ -151,7 +151,7 @@ export async function transactionNotesRoutes(app: FastifyInstance): Promise<void
       reply: FastifyReply
     ) => {
       const { id: txId, noteId } = req.params
-      const parsed = deleteNoteSchema.safeParse(req.body)
+      const parsed = deleteNoteQuerySchema.safeParse(req.query)
       if (!parsed.success) {
         return reply.status(400).send({ error: 'VALIDATION_ERROR', issues: parsed.error.issues })
       }
