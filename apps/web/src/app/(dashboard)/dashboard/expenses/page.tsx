@@ -200,6 +200,26 @@ export default function ExpensesPage() {
     return Array.from(cats).sort()
   }, [transactions])
 
+  // Build set of transaction IDs that belong to a suspected-duplicate group.
+  // A group = 2+ rows sharing the same date + amount + description in this month's list.
+  // Both the canonical (CLEARED) and secondary (WITHIN_FILE_DUPLICATE) are included.
+  const suspectedDupIds = useMemo(() => {
+    const groupKey = (tx: Transaction) =>
+      `${tx.transactionDate}|${tx.amountAgorot}|${tx.description}`
+    const groups = new Map<string, string[]>()
+    for (const tx of transactions) {
+      const key = groupKey(tx)
+      const group = groups.get(key) ?? []
+      group.push(tx.id)
+      groups.set(key, group)
+    }
+    const ids = new Set<string>()
+    for (const group of groups.values()) {
+      if (group.length >= 2) group.forEach(id => ids.add(id))
+    }
+    return ids
+  }, [transactions])
+
   // Summary stats
   const stats = useMemo(() => {
     const slices = categoryBreakdown(transactions)
@@ -207,17 +227,14 @@ export default function ExpensesPage() {
     const anomalyCount = transactions.filter((tx: Transaction) =>
       isAnomaly(tx, categoryAverages)
     ).length
-    const withinFileDupCount = transactions.filter(
-      (tx: Transaction) => tx.status === 'WITHIN_FILE_DUPLICATE'
-    ).length
-    return { totalExpenses, anomalyCount, withinFileDupCount }
-  }, [transactions, categoryAverages])
+    return { totalExpenses, anomalyCount, withinFileDupCount: suspectedDupIds.size }
+  }, [transactions, categoryAverages, suspectedDupIds])
 
   // Filtered list (apply showDuplicatesOnly on top of server-filtered list)
   const displayedTransactions = useMemo(() => {
     if (!showDuplicatesOnly) return transactions
-    return transactions.filter((tx: Transaction) => tx.status === 'WITHIN_FILE_DUPLICATE')
-  }, [transactions, showDuplicatesOnly])
+    return transactions.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
+  }, [transactions, showDuplicatesOnly, suspectedDupIds])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -432,13 +449,13 @@ export default function ExpensesPage() {
               {!isLoading &&
                 displayedTransactions.map(tx => {
                   const anomaly = isAnomaly(tx, categoryAverages)
-                  const isWithinFileDup = tx.status === 'WITHIN_FILE_DUPLICATE'
+                  const isSuspectedDup = suspectedDupIds.has(tx.id)
                   const isCredit = tx.amountAgorot < 0
                   return (
                     <tr
                       key={tx.id}
                       className={`border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isWithinFileDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
+                        isSuspectedDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -446,12 +463,12 @@ export default function ExpensesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {isWithinFileDup && (
+                          {isSuspectedDup && (
                             <span title="עסקה חשודה ככפולה בתוך הקובץ">
                               <Copy className="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
                             </span>
                           )}
-                          {anomaly && !isWithinFileDup && (
+                          {anomaly && !isSuspectedDup && (
                             <span title="סכום חריג לקטגוריה זו">
                               <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
                             </span>
