@@ -123,6 +123,8 @@
 - [x] `file_hash` column on `import_batches` with partial unique index (migration 007)
 - [x] Import API endpoint: `POST /import/csv` — returns `{ inserted, duplicates, errors }`
 - [x] `postinstall` hook runs `prisma generate` so CI always has up-to-date enum types
+- [x] XLSX support: parsers for MAX and CAL XLSX files with ExcelJS (replaces xlsx due to CVE concerns)
+- [x] Import API endpoint: `POST /import/xlsx` — returns `{ inserted, duplicates, errors }`
 - [-] BullMQ worker: `csv-import` queue with OTel spans (deferred: sync import sufficient for MVP; easy to add async path later — revisit Phase 9/10)
 - [-] Cloudflare R2 integration for ephemeral CSV storage (deferred: not needed without async worker — revisit Phase 9/10)
 
