@@ -313,6 +313,7 @@ export class ImportService {
     // Build within-file group map: key → index of the first (canonical) occurrence.
     const firstOccurrenceIndex = new Map<string, number>()
     for (let i = 0; i < rows.length; i++) {
+      // eslint-disable-next-line security/detect-object-injection
       const row = rows[i]
       if (row === undefined) continue
       const key = this.withinFileGroupKey(row)
@@ -326,6 +327,7 @@ export class ImportService {
     const canonicalIdByKey = new Map<string, string | null>()
 
     for (let i = 0; i < rows.length; i++) {
+      // eslint-disable-next-line security/detect-object-injection
       const row = rows[i]
       if (row === undefined) continue
 

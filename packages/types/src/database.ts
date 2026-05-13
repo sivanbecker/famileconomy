@@ -2,7 +2,7 @@
 
 export type AccountType = "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH";
 
-export type TransactionStatus = "CLEARED" | "PENDING" | "DUPLICATE" | "REVIEWED_OK";
+export type TransactionStatus = "CLEARED" | "PENDING" | "DUPLICATE" | "REVIEWED_OK" | "WITHIN_FILE_DUPLICATE";
 
 export interface User {
   id: string;
