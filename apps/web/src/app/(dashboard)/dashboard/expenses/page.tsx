@@ -15,6 +15,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { categoryBreakdown } from '@famileconomy/utils'
@@ -372,6 +373,100 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
   )
 }
 
+// ─── Filter modal ─────────────────────────────────────────────────────────────
+
+export type NotesLabel = 'הוראת קבע' | 'תשלומים' | 'אחר'
+
+function classifyNotes(tx: Transaction): NotesLabel {
+  if (tx.notes?.includes('הוראת קבע')) return 'הוראת קבע'
+  if (tx.installmentNum !== null) return 'תשלומים'
+  return 'אחר'
+}
+
+interface FilterModalProps {
+  available: NotesLabel[]
+  checked: Set<NotesLabel>
+  counts: Record<NotesLabel, number>
+  onToggle: (label: NotesLabel) => void
+  onSelectAll: () => void
+  onClear: () => void
+  onClose: () => void
+}
+
+function FilterModal({
+  available,
+  checked,
+  counts,
+  onToggle,
+  onSelectAll,
+  onClear,
+  onClose,
+}: FilterModalProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="פילטר הערות"
+      className="absolute start-0 top-10 z-50 w-64 rounded-lg border border-border bg-surface shadow-lg"
+    >
+      {/* header */}
+      <div className="border-b border-border px-4 py-3">
+        <p className="text-sm font-semibold">סינון לפי הערות</p>
+      </div>
+
+      {/* select all / clear */}
+      <div className="flex gap-3 border-b border-border px-4 py-2 text-xs">
+        <button onClick={onSelectAll} className="text-primary hover:underline">
+          בחר הכל ({available.length})
+        </button>
+        <span className="text-border">|</span>
+        <button onClick={onClear} className="text-primary hover:underline">
+          נקה
+        </button>
+        <span className="ms-auto text-muted-foreground">מציג {checked.size}</span>
+      </div>
+
+      {/* checklist — changes apply live */}
+      <div className="px-2 py-2">
+        {available.map(label => (
+          <label
+            key={label}
+            className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-surface-2"
+          >
+            <input
+              type="checkbox"
+              checked={checked.has(label)}
+              onChange={() => onToggle(label)}
+              className="h-4 w-4 rounded accent-primary"
+            />
+            <span className="flex-1">{label}</span>
+            <span className="tabular-nums text-xs text-muted-foreground">
+              {label === 'הוראת קבע'
+                ? counts['הוראת קבע']
+                : label === 'תשלומים'
+                  ? counts['תשלומים']
+                  : counts['אחר']}
+            </span>
+          </label>
+        ))}
+        {available.length === 0 && (
+          <p className="px-2 py-3 text-center text-xs text-muted-foreground">אין נתונים</p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ExpensesPage() {
@@ -389,6 +484,9 @@ export default function ExpensesPage() {
   const [maxAmount, setMaxAmount] = useState('')
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [filterOpen, setFilterOpen] = useState(false)
+  // null = all shown; Set = only checked labels shown
+  const [checkedNotesLabels, setCheckedNotesLabels] = useState<Set<NotesLabel> | null>(null)
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
 
   const userId = user?.id
@@ -447,6 +545,28 @@ export default function ExpensesPage() {
     return ids
   }, [transactions])
 
+  // Notes labels available in current month + counts
+  const { availableNotesLabels, notesCounts } = useMemo(() => {
+    const standingOrders = transactions.filter(
+      (tx: Transaction) => classifyNotes(tx) === 'הוראת קבע'
+    ).length
+    const installments = transactions.filter(
+      (tx: Transaction) => classifyNotes(tx) === 'תשלומים'
+    ).length
+    const other = transactions.filter((tx: Transaction) => classifyNotes(tx) === 'אחר').length
+    const counts: Record<NotesLabel, number> = {
+      'הוראת קבע': standingOrders,
+      תשלומים: installments,
+      אחר: other,
+    }
+    const available = (['הוראת קבע', 'תשלומים', 'אחר'] as NotesLabel[]).filter(l =>
+      l === 'הוראת קבע' ? standingOrders > 0 : l === 'תשלומים' ? installments > 0 : other > 0
+    )
+    return { availableNotesLabels: available, notesCounts: counts }
+  }, [transactions])
+
+  const effectiveChecked = checkedNotesLabels ?? new Set(availableNotesLabels)
+
   // Summary stats
   const stats = useMemo(() => {
     const slices = categoryBreakdown(transactions)
@@ -457,11 +577,14 @@ export default function ExpensesPage() {
     return { totalExpenses, anomalyCount, withinFileDupCount: suspectedDupIds.size }
   }, [transactions, categoryAverages, suspectedDupIds])
 
-  // Filtered list (apply showDuplicatesOnly on top of server-filtered list)
+  // Filtered list
   const displayedTransactions = useMemo(() => {
-    if (!showDuplicatesOnly) return transactions
-    return transactions.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
-  }, [transactions, showDuplicatesOnly, suspectedDupIds])
+    let result = transactions
+    if (checkedNotesLabels !== null)
+      result = result.filter((tx: Transaction) => checkedNotesLabels.has(classifyNotes(tx)))
+    if (showDuplicatesOnly) result = result.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
+    return result
+  }, [transactions, checkedNotesLabels, showDuplicatesOnly, suspectedDupIds])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -490,10 +613,15 @@ export default function ExpensesPage() {
     setCategoryFilter('')
     setMinAmount('')
     setMaxAmount('')
+    setCheckedNotesLabels(null)
     setShowDuplicatesOnly(false)
   }
 
-  const hasFilters = search || categoryFilter || minAmount || maxAmount || showDuplicatesOnly
+  const notesFilterActive =
+    checkedNotesLabels !== null && availableNotesLabels.some(l => !checkedNotesLabels.has(l))
+  const filterActive = notesFilterActive || showDuplicatesOnly
+
+  const hasFilters = search || categoryFilter || minAmount || maxAmount || filterActive
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -553,6 +681,38 @@ export default function ExpensesPage() {
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface p-4 shadow-card-md">
+        {/* Filter modal trigger */}
+        <div className="relative">
+          <button
+            onClick={() => setFilterOpen(v => !v)}
+            className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+              filterActive
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            פילטר
+            {filterActive && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+          </button>
+          {filterOpen && (
+            <FilterModal
+              available={availableNotesLabels}
+              checked={effectiveChecked}
+              counts={notesCounts}
+              onToggle={label => {
+                const next = new Set(effectiveChecked)
+                if (next.has(label)) next.delete(label)
+                else next.add(label)
+                setCheckedNotesLabels(next)
+              }}
+              onSelectAll={() => setCheckedNotesLabels(new Set(availableNotesLabels))}
+              onClear={() => setCheckedNotesLabels(new Set())}
+              onClose={() => setFilterOpen(false)}
+            />
+          )}
+        </div>
+
         {/* Search */}
         <div className="relative min-w-48 flex-1">
           <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -690,7 +850,7 @@ export default function ExpensesPage() {
                     <tr
                       key={tx.id}
                       className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isSuspectedDup ? 'bg-warning/5' : anomaly ? 'bg-warning/5' : ''
+                        isSuspectedDup || anomaly ? 'bg-warning/5' : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
