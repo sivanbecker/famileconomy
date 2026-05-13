@@ -37,7 +37,16 @@ def load_config(config_path: Path = None) -> dict:
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
     with open(config_path, "r") as f:
-        return json.load(f)
+        config = json.load(f)
+
+    root = config.get("google_drive_root", "")
+    for provider in config.values():
+        if not isinstance(provider, dict):
+            continue
+        for key in ("xlsx_base", "csv_base"):
+            if key in provider and root:
+                provider[key] = str(Path(root) / provider[key])
+    return config
 
 
 def parse_arguments(config: dict) -> argparse.Namespace:
