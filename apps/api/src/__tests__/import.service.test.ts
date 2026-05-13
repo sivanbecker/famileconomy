@@ -589,6 +589,156 @@ describe('ImportService', () => {
     })
   })
 
+  // ─── Within-file duplicate detection ─────────────────────────────────────
+
+  describe('within-file duplicates', () => {
+    // MAX file with two identical rows (same date + amount + description + card)
+    const MAX_TWO_IDENTICAL_ROWS =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `05/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `34₪,,,,,,,,,,,,,,,`
+
+    // MAX file with three identical rows
+    const MAX_THREE_IDENTICAL_ROWS =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `05/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `51₪,,,,,,,,,,,,,,,`
+
+    beforeEach(() => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.account.create).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.create).mockResolvedValue(MOCK_BATCH)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('imports ALL rows when a file contains two identical rows', async () => {
+      const result = await service.importCsv({
+        csv: MAX_TWO_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.inserted).toBe(2)
+      expect(result.withinFileDuplicates).toBe(1)
+      expect(prisma.transaction.create).toHaveBeenCalledTimes(2)
+    })
+
+    it('imports ALL rows when a file contains three identical rows', async () => {
+      const result = await service.importCsv({
+        csv: MAX_THREE_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.inserted).toBe(3)
+      expect(result.withinFileDuplicates).toBe(2)
+      expect(prisma.transaction.create).toHaveBeenCalledTimes(3)
+    })
+
+    it('inserts the first row in a within-file group as CLEARED', async () => {
+      await service.importCsv({
+        csv: MAX_TWO_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      const firstCall = vi.mocked(prisma.transaction.create).mock.calls[0]
+      expect(firstCall?.[0]).toMatchObject({
+        data: expect.objectContaining({ status: 'CLEARED' }),
+      })
+    })
+
+    it('inserts subsequent rows in a within-file group as WITHIN_FILE_DUPLICATE', async () => {
+      const FIRST_TX_ID = 'first-tx-uuid'
+      vi.mocked(prisma.transaction.create)
+        .mockResolvedValueOnce({ id: FIRST_TX_ID } as never)
+        .mockResolvedValueOnce({} as never)
+
+      await service.importCsv({
+        csv: MAX_TWO_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      const secondCall = vi.mocked(prisma.transaction.create).mock.calls[1]
+      expect(secondCall?.[0]).toMatchObject({
+        data: expect.objectContaining({
+          status: 'WITHIN_FILE_DUPLICATE',
+          duplicateOf: FIRST_TX_ID,
+        }),
+      })
+    })
+
+    it('does NOT add within-file duplicates to skippedRows', async () => {
+      const result = await service.importCsv({
+        csv: MAX_TWO_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.skippedRows).toHaveLength(0)
+    })
+
+    it('does NOT write audit log entries for WITHIN_FILE_DUPLICATE rows', async () => {
+      vi.mocked(prisma.transaction.create)
+        .mockResolvedValueOnce({ id: 'first-tx-uuid' } as never)
+        .mockResolvedValueOnce({} as never)
+
+      await service.importCsv({
+        csv: MAX_TWO_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      // Only 1 audit log entry: for the first (CLEARED) row
+      expect(prisma.auditLog.create).toHaveBeenCalledTimes(1)
+    })
+
+    it('still blocks cross-file duplicates even when a within-file group exists', async () => {
+      // The dedup hash already exists in DB from a previous import
+      const EXISTING_TX_ID = 'existing-tx-uuid'
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({
+        id: EXISTING_TX_ID,
+        importBatch: { filename: 'previous.csv' },
+      } as never)
+
+      const result = await service.importCsv({
+        csv: MAX_TWO_IDENTICAL_ROWS,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      // Both rows match an existing DB record → both are cross-file duplicates
+      expect(result.inserted).toBe(0)
+      expect(result.duplicates).toBe(2)
+      expect(result.withinFileDuplicates).toBe(0)
+      expect(result.skippedRows).toHaveLength(2)
+    })
+  })
+
   // ─── Error cases ───────────────────────────────────────────────────────────
 
   describe('error cases', () => {
