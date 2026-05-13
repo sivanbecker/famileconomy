@@ -29,11 +29,11 @@ docker-compose up -d
 # 2. Install dependencies
 npm install
 
-# 3. Apply database migrations
-npm run db:migrate --workspace=api
+# 3. Apply database migrations and generate prisma types
+npm run db:setup --workspace=api
 
 # 4. Start dev servers
-npm run dev -- --filter='@famileconomy/web' --filter='@famileconomy/api'
+npx turbo dev --filter='@famileconomy/web' --filter='@famileconomy/api'
 ```
 
 This starts:
@@ -64,6 +64,25 @@ This starts:
 1. Dashboard → "Import" tab
 2. Upload MAX (מקס) or CAL (כאל) CSV exports
 3. Transactions auto-group by card/account and deduplicate by file hash + row hash
+
+### Development Scripts
+
+Convert and rename XLSX files locally:
+
+```bash
+# Convert batch of XLSX to CSV using local folder structure config
+uv run scripts/xlsx-to-csv.py --provider CAL --year 2026 --batch
+
+# Rename XLSX files after parsing
+uv run scripts/xlsx-rename.py --provider MAX --year 2026 --batch
+```
+
+### Running Local Dev Server
+
+```bash
+# Start web + API servers
+npx turbo dev --filter='@famileconomy/web' --filter='@famileconomy/api'
+```
 
 ### Google Drive Import (Phase 8)
 
