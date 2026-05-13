@@ -14,6 +14,7 @@ function makeTx(overrides: Partial<Transaction> = {}): Transaction {
     status: 'CLEARED',
     installmentNum: null,
     installmentOf: null,
+    notes: null,
     ...overrides,
   }
 }

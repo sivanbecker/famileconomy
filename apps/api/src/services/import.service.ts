@@ -354,6 +354,7 @@ export class ImportService {
         ...(row.cardLastFour !== null && { cardLastFour: row.cardLastFour }),
         ...(row.installmentNum !== null && { installmentNum: row.installmentNum }),
         ...(row.installmentOf !== null && { installmentOf: row.installmentOf }),
+        ...(row.notes !== null && { notes: row.notes }),
         dedupeHash,
       }
 

@@ -215,6 +215,7 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
       installmentNum: installment?.num ?? null,
       installmentOf: installment?.of ?? null,
       isPending,
+      notes: notes || null,
     })
   }
 

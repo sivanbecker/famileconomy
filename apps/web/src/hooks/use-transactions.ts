@@ -23,6 +23,7 @@ export interface Transaction {
   status: TransactionStatus
   installmentNum: number | null
   installmentOf: number | null
+  notes: string | null
 }
 
 interface TransactionsResponse {

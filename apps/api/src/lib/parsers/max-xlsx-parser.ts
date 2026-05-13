@@ -150,6 +150,7 @@ export async function parseMaxXlsx(buffer: Buffer): Promise<ParsedTransaction[]>
       installmentNum: installment?.num ?? null,
       installmentOf: installment?.of ?? null,
       isPending: false,
+      notes: notes || null,
     })
   }
 

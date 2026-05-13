@@ -197,6 +197,44 @@ describe('parseMaxXlsx', () => {
     })
   })
 
+  describe('notes field', () => {
+    it('stores raw notes text on the parsed transaction', async () => {
+      const xlsx = await makeMaxXlsx([
+        '13-04-2026',
+        'PAYBOX TEL AVIV IL',
+        'העברת כספים',
+        '5432',
+        'רגילה',
+        30,
+        '₪',
+        30,
+        '₪',
+        '10-05-2026',
+        'למי: יובל בקר',
+      ])
+      const result = await parseMaxXlsx(xlsx)
+      expect(result[0]?.notes).toBe('למי: יובל בקר')
+    })
+
+    it('stores null when the notes cell is empty', async () => {
+      const xlsx = await makeMaxXlsx([
+        '09-04-2026',
+        'מאפיית בראשית',
+        'שונות',
+        '5432',
+        'רגילה',
+        17,
+        '₪',
+        17,
+        '₪',
+        '10-05-2026',
+        '',
+      ])
+      const result = await parseMaxXlsx(xlsx)
+      expect(result[0]?.notes).toBeNull()
+    })
+  })
+
   describe('error handling', () => {
     it('throws error for empty XLSX file', async () => {
       const workbook = new ExcelJS.Workbook()

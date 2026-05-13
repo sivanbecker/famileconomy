@@ -473,12 +473,23 @@ export default function ExpensesPage() {
                               <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
                             </span>
                           )}
-                          <span className="max-w-64 truncate font-medium">{tx.description}</span>
-                          {tx.installmentNum !== null && tx.installmentOf !== null && (
-                            <span className="text-xs text-muted-foreground">
-                              ({tx.installmentNum}/{tx.installmentOf})
-                            </span>
-                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="max-w-64 truncate font-medium">
+                                {tx.description}
+                              </span>
+                              {tx.installmentNum !== null && tx.installmentOf !== null && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({tx.installmentNum}/{tx.installmentOf})
+                                </span>
+                              )}
+                            </div>
+                            {tx.notes && (
+                              <p className="max-w-64 truncate text-xs text-muted-foreground">
+                                {tx.notes}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">

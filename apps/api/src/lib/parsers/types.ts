@@ -10,4 +10,5 @@ export interface ParsedTransaction {
   installmentNum: number | null
   installmentOf: number | null
   isPending: boolean
+  notes: string | null
 }

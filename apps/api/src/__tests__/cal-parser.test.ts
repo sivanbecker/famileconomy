@@ -193,6 +193,28 @@ describe('parseCalCsv', () => {
     })
   })
 
+  describe('notes field', () => {
+    it('stores raw installment note text as-is', () => {
+      const csv = makeCsv(
+        '24/4/26,עיריית הרצליה,"₪ 1,734.00",₪ 578.00,תשלומים,מוסדות,תשלום 1 מתוך 3'
+      )
+      const result = parseCalCsv(csv)
+      expect(result[0]?.notes).toBe('תשלום 1 מתוך 3')
+    })
+
+    it('stores "עסקה בקליטה" as raw notes text', () => {
+      const csv = makeCsv('29/4/26,מאפיית בראשית,₪ 35.00,,רכישה רגילה,מסעדות,עסקה בקליטה')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.notes).toBe('עסקה בקליטה')
+    })
+
+    it('stores null when the notes column is empty', () => {
+      const csv = makeCsv('24/4/26,א.י קמעונאות מזון,₪ 264.62,₪ 264.62,רגילה,מזון ומשקאות,')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.notes).toBeNull()
+    })
+  })
+
   describe('empty / edge cases', () => {
     it('returns empty array when there are no data rows', () => {
       const csv = makeCsv()

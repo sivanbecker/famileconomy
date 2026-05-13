@@ -159,6 +159,7 @@ export function parseMaxCsv(csv: string): ParsedTransaction[] {
       installmentNum: installment?.num ?? null,
       installmentOf: installment?.of ?? null,
       isPending: false,
+      notes: notes || null,
     })
   }
 

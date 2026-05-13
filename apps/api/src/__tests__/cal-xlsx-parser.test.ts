@@ -172,6 +172,50 @@ describe('parseCalXlsx', () => {
     })
   })
 
+  describe('notes field', () => {
+    it('stores raw installment note text as-is', async () => {
+      const xlsx = await makeCalXlsx('9876', '10/05/2026', [
+        '30/7/25',
+        'קיי.אס.פי הרצליה',
+        '₪ 309.00',
+        '₪ 309.00',
+        '',
+        'חשמל ומחשבים',
+        'תשלום 10 מתוך 15',
+      ])
+      const result = await parseCalXlsx(xlsx)
+      expect(result[0]?.notes).toBe('תשלום 10 מתוך 15')
+    })
+
+    it('stores "עסקה בקליטה" as raw notes text', async () => {
+      const xlsx = await makeCalXlsx('9876', '10/05/2026', [
+        '9/4/26',
+        'מאפיית בראשית',
+        '₪ 17.00',
+        '₪ 17.00',
+        '',
+        'מסעדות',
+        'עסקה בקליטה',
+      ])
+      const result = await parseCalXlsx(xlsx)
+      expect(result[0]?.notes).toBe('עסקה בקליטה')
+    })
+
+    it('stores null when the notes cell is empty', async () => {
+      const xlsx = await makeCalXlsx('9876', '10/05/2026', [
+        '9/4/26',
+        'מאפיית בראשית',
+        '₪ 17.00',
+        '₪ 17.00',
+        '',
+        'מסעדות',
+        '',
+      ])
+      const result = await parseCalXlsx(xlsx)
+      expect(result[0]?.notes).toBeNull()
+    })
+  })
+
   describe('error handling', () => {
     it('throws error when card identifier is missing', async () => {
       const workbook = new ExcelJS.Workbook()
