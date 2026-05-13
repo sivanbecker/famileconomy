@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
 import {
   Search,
   X,
@@ -15,6 +15,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  Flag,
   SlidersHorizontal,
 } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
@@ -30,9 +31,10 @@ import {
   useUpdateNote,
   useDeleteNote,
 } from '../../../../hooks/use-transaction-notes'
+import { useReviewTransaction, useBulkReview } from '../../../../hooks/use-review-transaction'
 import type { TransactionNote } from '../../../../hooks/use-transaction-notes'
 import type { SortField, SortDir, ExpenseFilters } from '../../../../hooks/use-expenses'
-import type { Transaction } from '../../../../hooks/use-transactions'
+import type { Transaction, ReviewStatus } from '../../../../hooks/use-transactions'
 
 // ─── Anomaly detection ────────────────────────────────────────────────────────
 
@@ -276,7 +278,6 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
 
   const hasNotes = notes.length > 0
 
-  // Close on outside click
   useEffect(() => {
     if (!open) return
     function handleClick(e: MouseEvent) {
@@ -376,6 +377,7 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
 // ─── Filter modal ─────────────────────────────────────────────────────────────
 
 export type NotesLabel = 'הוראת קבע' | 'תשלומים' | 'אחר'
+export type ReviewFilter = 'USER_REVIEWED' | 'USER_FLAGGED' | 'NONE'
 
 function classifyNotes(tx: Transaction): NotesLabel {
   if (tx.notes?.includes('הוראת קבע')) return 'הוראת קבע'
@@ -390,7 +392,19 @@ interface FilterModalProps {
   onToggle: (label: NotesLabel) => void
   onSelectAll: () => void
   onClear: () => void
+  // Review status filter
+  reviewFilters: Set<ReviewFilter>
+  reviewCounts: Record<ReviewFilter, number>
+  onToggleReview: (f: ReviewFilter) => void
+  onSelectAllReview: () => void
+  onClearReview: () => void
   onClose: () => void
+}
+
+const REVIEW_FILTER_LABELS: Record<ReviewFilter, string> = {
+  USER_REVIEWED: 'נבדק ✓',
+  USER_FLAGGED: 'לבדיקה נוספת 🔴',
+  NONE: 'ללא סימון',
 }
 
 function FilterModal({
@@ -400,6 +414,11 @@ function FilterModal({
   onToggle,
   onSelectAll,
   onClear,
+  reviewFilters,
+  reviewCounts,
+  onToggleReview,
+  onSelectAllReview,
+  onClearReview,
   onClose,
 }: FilterModalProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -412,19 +431,20 @@ function FilterModal({
     return () => document.removeEventListener('mousedown', handleClick)
   }, [onClose])
 
+  const allReviewOptions: ReviewFilter[] = ['USER_REVIEWED', 'USER_FLAGGED', 'NONE']
+
   return (
     <div
       ref={ref}
       role="dialog"
-      aria-label="פילטר הערות"
+      aria-label="פילטר"
       className="absolute start-0 top-10 z-50 w-64 rounded-lg border border-border bg-surface shadow-lg"
     >
-      {/* header */}
+      {/* ── Notes section ── */}
       <div className="border-b border-border px-4 py-3">
         <p className="text-sm font-semibold">סינון לפי הערות</p>
       </div>
 
-      {/* select all / clear */}
       <div className="flex gap-3 border-b border-border px-4 py-2 text-xs">
         <button onClick={onSelectAll} className="text-primary hover:underline">
           בחר הכל ({available.length})
@@ -436,7 +456,6 @@ function FilterModal({
         <span className="ms-auto text-muted-foreground">מציג {checked.size}</span>
       </div>
 
-      {/* checklist — changes apply live */}
       <div className="px-2 py-2">
         {available.map(label => (
           <label
@@ -463,6 +482,102 @@ function FilterModal({
           <p className="px-2 py-3 text-center text-xs text-muted-foreground">אין נתונים</p>
         )}
       </div>
+
+      {/* ── Review status section ── */}
+      <div className="border-t border-border px-4 py-3">
+        <p className="text-sm font-semibold">סטטוס בדיקה</p>
+      </div>
+
+      <div className="flex gap-3 border-b border-border px-4 py-2 text-xs">
+        <button onClick={onSelectAllReview} className="text-primary hover:underline">
+          בחר הכל
+        </button>
+        <span className="text-border">|</span>
+        <button onClick={onClearReview} className="text-primary hover:underline">
+          נקה
+        </button>
+        <span className="ms-auto text-muted-foreground">מציג {reviewFilters.size}</span>
+      </div>
+
+      <div className="px-2 py-2">
+        {allReviewOptions.map(f => (
+          <label
+            key={f}
+            className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-surface-2"
+          >
+            <input
+              type="checkbox"
+              checked={reviewFilters.has(f)}
+              onChange={() => onToggleReview(f)}
+              className="h-4 w-4 rounded accent-primary"
+            />
+            {/* eslint-disable-next-line security/detect-object-injection -- f is a typed ReviewFilter union, not user input */}
+            <span className="flex-1">{REVIEW_FILTER_LABELS[f]}</span>
+            {/* eslint-disable-next-line security/detect-object-injection -- f is a typed ReviewFilter union, not user input */}
+            <span className="tabular-nums text-xs text-muted-foreground">{reviewCounts[f]}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Bulk action bar ──────────────────────────────────────────────────────────
+
+interface BulkActionBarProps {
+  count: number
+  onMarkReviewed: () => void
+  onMarkFlagged: () => void
+  onClearReview: () => void
+  onDeselect: () => void
+  isPending: boolean
+}
+
+function BulkActionBar({
+  count,
+  onMarkReviewed,
+  onMarkFlagged,
+  onClearReview,
+  onDeselect,
+  isPending,
+}: BulkActionBarProps) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2.5 text-sm">
+      <span className="font-medium text-primary">
+        {count} {count === 1 ? 'עסקה נבחרה' : 'עסקאות נבחרו'}
+      </span>
+      <div className="ms-auto flex items-center gap-2">
+        <button
+          onClick={onMarkReviewed}
+          disabled={isPending}
+          className="flex items-center gap-1.5 rounded-md bg-success/10 px-3 py-1.5 text-xs font-medium text-success hover:bg-success/20 disabled:opacity-50"
+        >
+          <Check className="h-3.5 w-3.5" />
+          סמן כנבדק
+        </button>
+        <button
+          onClick={onMarkFlagged}
+          disabled={isPending}
+          className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 disabled:opacity-50"
+        >
+          <Flag className="h-3.5 w-3.5" />
+          סמן לבדיקה
+        </button>
+        <button
+          onClick={onClearReview}
+          disabled={isPending}
+          className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+        >
+          נקה סימון
+        </button>
+        <button
+          onClick={onDeselect}
+          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+          title="בטל בחירה"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   )
 }
@@ -488,6 +603,11 @@ export default function ExpensesPage() {
   // null = all shown; Set = only checked labels shown
   const [checkedNotesLabels, setCheckedNotesLabels] = useState<Set<NotesLabel> | null>(null)
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
+  // null = all shown; Set = only these review statuses shown
+  const [checkedReviewFilters, setCheckedReviewFilters] = useState<Set<ReviewFilter> | null>(null)
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const userId = user?.id
 
@@ -512,8 +632,14 @@ export default function ExpensesPage() {
     month
   )
 
+  const { mutate: reviewTransaction } = useReviewTransaction(activeAccountId, year, month)
+  const { mutate: bulkReview, isPending: isBulkPending } = useBulkReview(
+    activeAccountId,
+    year,
+    month
+  )
+
   // Derive category averages for anomaly detection from unfiltered view
-  // (we use the same filtered list here — good enough for MVP)
   const categoryAverages = useMemo(() => buildCategoryAverages(transactions), [transactions])
 
   // Derive category list for filter dropdown
@@ -525,9 +651,7 @@ export default function ExpensesPage() {
     return Array.from(cats).sort()
   }, [transactions])
 
-  // Build set of transaction IDs that belong to a suspected-duplicate group.
-  // A group = 2+ rows sharing the same date + amount + description in this month's list.
-  // Both the canonical (CLEARED) and secondary (WITHIN_FILE_DUPLICATE) are included.
+  // Build set of transaction IDs that belong to a suspected-duplicate group
   const suspectedDupIds = useMemo(() => {
     const groupKey = (tx: Transaction) =>
       `${tx.transactionDate}|${tx.amountAgorot}|${tx.description}`
@@ -565,7 +689,18 @@ export default function ExpensesPage() {
     return { availableNotesLabels: available, notesCounts: counts }
   }, [transactions])
 
+  // Review counts
+  const reviewCounts = useMemo((): Record<ReviewFilter, number> => {
+    return {
+      USER_REVIEWED: transactions.filter(tx => tx.reviewStatus === 'USER_REVIEWED').length,
+      USER_FLAGGED: transactions.filter(tx => tx.reviewStatus === 'USER_FLAGGED').length,
+      NONE: transactions.filter(tx => tx.reviewStatus === null).length,
+    }
+  }, [transactions])
+
+  const allReviewOptions: ReviewFilter[] = ['USER_REVIEWED', 'USER_FLAGGED', 'NONE']
   const effectiveChecked = checkedNotesLabels ?? new Set(availableNotesLabels)
+  const effectiveReviewFilters = checkedReviewFilters ?? new Set(allReviewOptions)
 
   // Summary stats
   const stats = useMemo(() => {
@@ -583,8 +718,36 @@ export default function ExpensesPage() {
     if (checkedNotesLabels !== null)
       result = result.filter((tx: Transaction) => checkedNotesLabels.has(classifyNotes(tx)))
     if (showDuplicatesOnly) result = result.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
+    if (checkedReviewFilters !== null) {
+      result = result.filter((tx: Transaction) => {
+        const f: ReviewFilter = tx.reviewStatus ?? 'NONE'
+        return checkedReviewFilters.has(f)
+      })
+    }
     return result
-  }, [transactions, checkedNotesLabels, showDuplicatesOnly, suspectedDupIds])
+  }, [transactions, checkedNotesLabels, showDuplicatesOnly, suspectedDupIds, checkedReviewFilters])
+
+  // Selection helpers
+  const allDisplayedSelected =
+    displayedTransactions.length > 0 && displayedTransactions.every(tx => selectedIds.has(tx.id))
+  const someDisplayedSelected = displayedTransactions.some(tx => selectedIds.has(tx.id))
+
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const toggleSelectAll = useCallback(() => {
+    if (allDisplayedSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(displayedTransactions.map(tx => tx.id)))
+    }
+  }, [allDisplayedSelected, displayedTransactions])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -615,11 +778,29 @@ export default function ExpensesPage() {
     setMaxAmount('')
     setCheckedNotesLabels(null)
     setShowDuplicatesOnly(false)
+    setCheckedReviewFilters(null)
+  }
+
+  function handleBulkReview(reviewStatus: ReviewStatus) {
+    if (!userId) return
+    bulkReview(
+      { userId, ids: Array.from(selectedIds), reviewStatus },
+      { onSuccess: () => setSelectedIds(new Set()) }
+    )
+  }
+
+  function handleSingleReview(tx: Transaction) {
+    if (!userId) return
+    // Toggle: if already USER_REVIEWED, clear it; otherwise set it
+    const next: ReviewStatus = tx.reviewStatus === 'USER_REVIEWED' ? null : 'USER_REVIEWED'
+    reviewTransaction({ transactionId: tx.id, userId, reviewStatus: next })
   }
 
   const notesFilterActive =
     checkedNotesLabels !== null && availableNotesLabels.some(l => !checkedNotesLabels.has(l))
-  const filterActive = notesFilterActive || showDuplicatesOnly
+  const reviewFilterActive =
+    checkedReviewFilters !== null && allReviewOptions.some(f => !checkedReviewFilters.has(f))
+  const filterActive = notesFilterActive || showDuplicatesOnly || reviewFilterActive
 
   const hasFilters = search || categoryFilter || minAmount || maxAmount || filterActive
 
@@ -679,6 +860,18 @@ export default function ExpensesPage() {
         </div>
       )}
 
+      {/* ── Bulk action bar ── */}
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          onMarkReviewed={() => handleBulkReview('USER_REVIEWED')}
+          onMarkFlagged={() => handleBulkReview('USER_FLAGGED')}
+          onClearReview={() => handleBulkReview(null)}
+          onDeselect={() => setSelectedIds(new Set())}
+          isPending={isBulkPending}
+        />
+      )}
+
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface p-4 shadow-card-md">
         {/* Filter modal trigger */}
@@ -708,6 +901,16 @@ export default function ExpensesPage() {
               }}
               onSelectAll={() => setCheckedNotesLabels(new Set(availableNotesLabels))}
               onClear={() => setCheckedNotesLabels(new Set())}
+              reviewFilters={effectiveReviewFilters}
+              reviewCounts={reviewCounts}
+              onToggleReview={f => {
+                const next = new Set(effectiveReviewFilters)
+                if (next.has(f)) next.delete(f)
+                else next.add(f)
+                setCheckedReviewFilters(next)
+              }}
+              onSelectAllReview={() => setCheckedReviewFilters(new Set(allReviewOptions))}
+              onClearReview={() => setCheckedReviewFilters(new Set())}
               onClose={() => setFilterOpen(false)}
             />
           )}
@@ -739,7 +942,7 @@ export default function ExpensesPage() {
           ))}
         </select>
 
-        {/* Amount range — full-width on mobile so it doesn't squeeze inline */}
+        {/* Amount range */}
         <div className="flex w-full items-center gap-1 sm:w-auto">
           <input
             type="number"
@@ -776,6 +979,20 @@ export default function ExpensesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-xs text-muted-foreground">
+                {/* Checkbox column */}
+                <th className="w-10 px-3 py-3">
+                  <input
+                    type="checkbox"
+                    checked={allDisplayedSelected}
+                    ref={el => {
+                      if (el) el.indeterminate = someDisplayedSelected && !allDisplayedSelected
+                    }}
+                    onChange={toggleSelectAll}
+                    className="h-4 w-4 rounded accent-primary"
+                    aria-label="בחר הכל"
+                    disabled={displayedTransactions.length === 0}
+                  />
+                </th>
                 <th className="px-4 py-3 text-start">
                   <button
                     className="flex items-center gap-1 hover:text-foreground"
@@ -815,6 +1032,9 @@ export default function ExpensesPage() {
               {isLoading &&
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/50">
+                    <td className="px-3 py-3">
+                      <div className="h-4 w-4 animate-pulse rounded bg-surface-2" />
+                    </td>
                     <td className="px-4 py-3">
                       <div className="h-4 w-20 animate-pulse rounded bg-surface-2" />
                     </td>
@@ -835,7 +1055,7 @@ export default function ExpensesPage() {
 
               {!isLoading && displayedTransactions.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-10 text-center text-muted-foreground">
                     {hasFilters ? 'לא נמצאו עסקאות התואמות את הסינון.' : 'אין עסקאות לחודש זה.'}
                   </td>
                 </tr>
@@ -846,18 +1066,60 @@ export default function ExpensesPage() {
                   const anomaly = isAnomaly(tx, categoryAverages)
                   const isSuspectedDup = suspectedDupIds.has(tx.id)
                   const isCredit = tx.amountAgorot < 0
+                  const isSelected = selectedIds.has(tx.id)
+                  const isReviewed = tx.reviewStatus === 'USER_REVIEWED'
+                  const isFlagged = tx.reviewStatus === 'USER_FLAGGED'
                   return (
                     <tr
                       key={tx.id}
                       className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isSuspectedDup || anomaly ? 'bg-warning/5' : ''
+                        isSelected
+                          ? 'bg-primary/5'
+                          : isSuspectedDup || anomaly
+                            ? 'bg-warning/5'
+                            : ''
                       }`}
                     >
+                      {/* Checkbox */}
+                      <td className="px-3 py-3">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleSelect(tx.id)}
+                          className="h-4 w-4 rounded accent-primary"
+                          aria-label={`בחר עסקה: ${tx.description}`}
+                        />
+                      </td>
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {tx.transactionDate}
                       </td>
                       <td className="min-w-0 px-4 py-3">
                         <div className="flex items-center gap-2">
+                          {/* Review status icon — clickable to toggle reviewed */}
+                          {isReviewed ? (
+                            <button
+                              onClick={() => handleSingleReview(tx)}
+                              title="נבדק — לחץ להסרת הסימון"
+                              className="shrink-0 text-success hover:opacity-70"
+                            >
+                              <Check className="h-3.5 w-3.5" />
+                            </button>
+                          ) : isFlagged ? (
+                            <button
+                              onClick={() =>
+                                userId &&
+                                reviewTransaction({
+                                  transactionId: tx.id,
+                                  userId,
+                                  reviewStatus: null,
+                                })
+                              }
+                              title="לבדיקה נוספת — לחץ להסרת הסימון"
+                              className="shrink-0 text-destructive hover:opacity-70"
+                            >
+                              <Flag className="h-4 w-4" />
+                            </button>
+                          ) : null}
                           {isSuspectedDup && (
                             <span title="עסקה חשודה ככפולה בתוך הקובץ">
                               <Copy className="h-3.5 w-3.5 flex-shrink-0 text-warning" />

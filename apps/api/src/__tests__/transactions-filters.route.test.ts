@@ -22,6 +22,7 @@ function makeTxRow(overrides: Record<string, unknown> = {}) {
     category: 'מזון',
     cardLastFour: '1234',
     status: 'CLEARED',
+    reviewStatus: null,
     installmentNum: null,
     installmentOf: null,
     chargeDate: null,

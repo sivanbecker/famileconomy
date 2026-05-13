@@ -13,6 +13,8 @@ export type TransactionStatus =
   | 'REVIEWED_OK'
   | 'WITHIN_FILE_DUPLICATE'
 
+export type ReviewStatus = 'USER_REVIEWED' | 'USER_FLAGGED' | null
+
 export interface Transaction {
   id: string
   transactionDate: string
@@ -21,6 +23,7 @@ export interface Transaction {
   category: string | null
   cardLastFour: string | null
   status: TransactionStatus
+  reviewStatus: ReviewStatus
   installmentNum: number | null
   installmentOf: number | null
   notes: string | null

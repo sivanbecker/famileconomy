@@ -82,6 +82,13 @@ enum TransactionStatus {
   @@map("transaction_status")
 }
 
+enum ReviewStatus {
+  USER_REVIEWED
+  USER_FLAGGED
+
+  @@map("review_status")
+}
+
 // ─── Transactions ─────────────────────────────────────────────────────────────
 // Monetary columns are BYTEA in PostgreSQL (pgcrypto encrypted).
 // Prisma maps them as Bytes. The service layer decrypts to Int (agorot).
@@ -112,6 +119,7 @@ model Transaction {
   installmentNum  Int?              @map("installment_num")
   installmentOf   Int?              @map("installment_of")
   notes           String?
+  reviewStatus    ReviewStatus?     @map("review_status")
   duplicateOf     String?           @map("duplicate_of")
   createdAt       DateTime          @default(now()) @map("created_at")
 

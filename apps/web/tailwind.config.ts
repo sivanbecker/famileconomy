@@ -51,6 +51,10 @@ const config: Config = {
           DEFAULT: 'var(--warning)',
           foreground: 'var(--warning-foreground)',
         },
+        success: {
+          DEFAULT: 'var(--success)',
+          foreground: 'var(--success-foreground)',
+        },
         chart: {
           '1': 'var(--chart-1)',
           '2': 'var(--chart-2)',

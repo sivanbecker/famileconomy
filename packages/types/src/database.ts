@@ -4,6 +4,8 @@ export type AccountType = "CHECKING" | "SAVINGS" | "CREDIT_CARD" | "CASH";
 
 export type TransactionStatus = "CLEARED" | "PENDING" | "DUPLICATE" | "REVIEWED_OK" | "WITHIN_FILE_DUPLICATE";
 
+export type ReviewStatus = "USER_REVIEWED" | "USER_FLAGGED";
+
 export interface User {
   id: string;
   email: string;
@@ -59,6 +61,7 @@ export interface Transaction {
   installmentNum: number | null;
   installmentOf: number | null;
   notes: string | null;
+  reviewStatus: ReviewStatus | null;
   duplicateOf: string | null;
   createdAt: Date;
   account?: Account;
