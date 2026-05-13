@@ -170,7 +170,8 @@
 - [x] Transaction detail / edit category inline
 - [x] Anomaly highlighting (transactions > 2× category average)
 - [x] Within-file duplicate detection: rows with same date+amount+description in one file imported as `WITHIN_FILE_DUPLICATE`; expenses page highlights them orange + filter button; import report explains how many were flagged
-- [~] Import and store הערות (notes) column from MAX and CAL files; display as subtitle in expenses list
+- [x] Import and store הערות (notes) column from MAX and CAL files; display as subtitle in expenses list
+- [~] Fix CAL CSV parser: real exports use `YYYY-MM-DD HH:MM:SS` dates and raw numeric amounts (no ₪ prefix)
 
 ### 7e — Safe-to-Spend
 
