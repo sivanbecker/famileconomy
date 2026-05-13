@@ -403,7 +403,7 @@ interface FilterModalProps {
 
 const REVIEW_FILTER_LABELS: Record<ReviewFilter, string> = {
   USER_REVIEWED: 'נבדק ✓',
-  USER_FLAGGED: 'לבדיקה נוספת 🚩',
+  USER_FLAGGED: 'לבדיקה נוספת 🔴',
   NONE: 'ללא סימון',
 }
 
@@ -558,7 +558,7 @@ function BulkActionBar({
         <button
           onClick={onMarkFlagged}
           disabled={isPending}
-          className="flex items-center gap-1.5 rounded-md bg-warning/10 px-3 py-1.5 text-xs font-medium text-warning hover:bg-warning/20 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-md bg-destructive/10 px-3 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20 disabled:opacity-50"
         >
           <Flag className="h-3.5 w-3.5" />
           סמן לבדיקה
@@ -1115,9 +1115,9 @@ export default function ExpensesPage() {
                                 })
                               }
                               title="לבדיקה נוספת — לחץ להסרת הסימון"
-                              className="shrink-0 text-warning hover:opacity-70"
+                              className="shrink-0 text-destructive hover:opacity-70"
                             >
-                              <Flag className="h-3.5 w-3.5" />
+                              <Flag className="h-4 w-4" />
                             </button>
                           ) : null}
                           {isSuspectedDup && (
