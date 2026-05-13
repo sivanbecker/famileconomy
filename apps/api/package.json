@@ -18,6 +18,7 @@
     "db:migrate:status": "node-pg-migrate status --migrations-dir migrations",
     "db:migrate:create": "node-pg-migrate create --migrations-dir migrations",
     "db:generate-types": "prisma generate",
+    "db:setup": "node-pg-migrate up --migrations-dir migrations && prisma generate",
     "dev:instrument": "tsx --import ./src/instrumentation.ts src/server.ts"
   },
   "dependencies": {
