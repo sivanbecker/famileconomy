@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import {
   Search,
   X,
@@ -155,7 +155,7 @@ function CategoryCell({ tx, userId, onMutate, isPending }: CategoryCellProps) {
   )
 }
 
-// ─── Notes panel ─────────────────────────────────────────────────────────────
+// ─── Notes dialog ─────────────────────────────────────────────────────────────
 
 interface NoteItemProps {
   note: TransactionNote
@@ -193,7 +193,7 @@ function NoteItem({ note, userId, transactionId }: NoteItemProps) {
   })
 
   return (
-    <div className="group flex gap-2 rounded-md border border-border/50 bg-background px-3 py-2">
+    <div className="group flex gap-2 rounded-md border border-border/50 bg-surface px-3 py-2">
       <div className="min-w-0 flex-1">
         {editing ? (
           <textarea
@@ -202,7 +202,7 @@ function NoteItem({ note, userId, transactionId }: NoteItemProps) {
             onChange={e => setDraft(e.target.value)}
             rows={2}
             maxLength={2000}
-            className="w-full resize-none rounded border border-border bg-surface px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full resize-none rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
             onKeyDown={e => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
@@ -251,55 +251,117 @@ function NoteItem({ note, userId, transactionId }: NoteItemProps) {
   )
 }
 
-interface NotesPanelProps {
+interface NotesButtonProps {
   transactionId: string
   userId: string
 }
 
-function NotesPanel({ transactionId, userId }: NotesPanelProps) {
+function NotesButton({ transactionId, userId }: NotesButtonProps) {
+  const [open, setOpen] = useState(false)
   const [newBody, setNewBody] = useState('')
-  const inputRef = useRef<HTMLTextAreaElement>(null)
-  const { data: notes = [], isLoading } = useTransactionNotes(transactionId, userId)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const { data: notes = [], isLoading } = useTransactionNotes(
+    transactionId,
+    open ? userId : undefined
+  )
   const { mutate: addNote, isPending: isAdding } = useAddNote(transactionId)
+
+  const hasNotes = notes.length > 0
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (
+        dialogRef.current &&
+        !dialogRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
 
   function handleAdd() {
     const trimmed = newBody.trim()
     if (!trimmed) return
-    addNote({ userId, body: trimmed }, { onSuccess: () => setNewBody('') })
+    addNote(
+      { userId, body: trimmed },
+      {
+        onSuccess: () => {
+          setNewBody('')
+          setOpen(false)
+        },
+      }
+    )
   }
 
   return (
-    <div className="flex flex-col gap-2 px-4 pb-3 pt-1">
-      {isLoading && <div className="h-3 w-32 animate-pulse rounded bg-surface-2" />}
-      {notes.map(note => (
-        <NoteItem key={note.id} note={note} userId={userId} transactionId={transactionId} />
-      ))}
-      {/* Add note input */}
-      <div className="flex items-end gap-2">
-        <textarea
-          ref={inputRef}
-          value={newBody}
-          onChange={e => setNewBody(e.target.value)}
-          placeholder="הוסף הערה..."
-          rows={1}
-          maxLength={2000}
-          className="min-h-[30px] flex-1 resize-none rounded border border-border bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-          onKeyDown={e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault()
-              handleAdd()
-            }
-          }}
-        />
-        <button
-          onClick={handleAdd}
-          disabled={isAdding || !newBody.trim()}
-          className="flex items-center gap-1 rounded bg-primary px-2 py-1.5 text-xs text-primary-foreground disabled:opacity-40"
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setOpen(v => !v)}
+        title={hasNotes ? `${notes.length} הערות` : 'הוסף הערה'}
+        className={`rounded p-0.5 transition-colors ${
+          hasNotes
+            ? 'text-primary'
+            : 'text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100'
+        }`}
+      >
+        <MessageSquare className="h-3.5 w-3.5" />
+      </button>
+
+      {open && (
+        <div
+          ref={dialogRef}
+          className="absolute end-0 top-6 z-50 w-72 rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
+          style={{ minWidth: '260px' }}
         >
-          <Plus className="h-3 w-3" />
-          הוסף
-        </button>
-      </div>
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">הערות</p>
+
+          {isLoading && <div className="mb-2 h-3 w-24 animate-pulse rounded bg-surface" />}
+
+          {notes.length > 0 && (
+            <div className="mb-2 flex flex-col gap-1.5">
+              {notes.map(note => (
+                <NoteItem key={note.id} note={note} userId={userId} transactionId={transactionId} />
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <textarea
+              autoFocus={notes.length === 0}
+              value={newBody}
+              onChange={e => setNewBody(e.target.value)}
+              placeholder="הוסף הערה..."
+              rows={2}
+              maxLength={2000}
+              className="min-h-[44px] flex-1 resize-none rounded border border-border bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleAdd()
+                }
+                if (e.key === 'Escape') setOpen(false)
+              }}
+            />
+            <button
+              onClick={handleAdd}
+              disabled={isAdding || !newBody.trim()}
+              className="flex items-center gap-1 rounded bg-primary px-2 py-1.5 text-xs text-primary-foreground disabled:opacity-40"
+            >
+              <Plus className="h-3 w-3" />
+              הוסף
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -322,7 +384,6 @@ export default function ExpensesPage() {
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
-  const [expandedNotesId, setExpandedNotesId] = useState<string | null>(null)
 
   const userId = user?.id
 
@@ -614,60 +675,48 @@ export default function ExpensesPage() {
                   const isSuspectedDup = suspectedDupIds.has(tx.id)
                   const isCredit = tx.amountAgorot < 0
                   return (
-                    <React.Fragment key={tx.id}>
-                      <tr
-                        className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                          isSuspectedDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
-                        }`}
-                      >
-                        <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
-                          {tx.transactionDate}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            {isSuspectedDup && (
-                              <span title="עסקה חשודה ככפולה בתוך הקובץ">
-                                <Copy className="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
+                    <tr
+                      key={tx.id}
+                      className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
+                        isSuspectedDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
+                      }`}
+                    >
+                      <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
+                        {tx.transactionDate}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-2">
+                          {isSuspectedDup && (
+                            <span title="עסקה חשודה ככפולה בתוך הקובץ">
+                              <Copy className="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
+                            </span>
+                          )}
+                          {anomaly && !isSuspectedDup && (
+                            <span title="סכום חריג לקטגוריה זו">
+                              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className="max-w-64 truncate font-medium">
+                                {tx.description}
                               </span>
-                            )}
-                            {anomaly && !isSuspectedDup && (
-                              <span title="סכום חריג לקטגוריה זו">
-                                <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
-                              </span>
-                            )}
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className="max-w-64 truncate font-medium">
-                                  {tx.description}
+                              {tx.installmentNum !== null && tx.installmentOf !== null && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({tx.installmentNum}/{tx.installmentOf})
                                 </span>
-                                {tx.installmentNum !== null && tx.installmentOf !== null && (
-                                  <span className="text-xs text-muted-foreground">
-                                    ({tx.installmentNum}/{tx.installmentOf})
-                                  </span>
-                                )}
-                              </div>
-                              {tx.notes && (
-                                <p className="max-w-64 truncate text-xs text-muted-foreground">
-                                  {tx.notes}
-                                </p>
                               )}
                             </div>
-                            <button
-                              onClick={() =>
-                                setExpandedNotesId(id => (id === tx.id ? null : tx.id))
-                              }
-                              title="הערות"
-                              className={`ms-auto shrink-0 rounded p-0.5 transition-colors ${
-                                expandedNotesId === tx.id
-                                  ? 'text-primary'
-                                  : 'text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100'
-                              }`}
-                            >
-                              <MessageSquare className="h-3.5 w-3.5" />
-                            </button>
+                            {tx.notes && (
+                              <p className="max-w-64 truncate text-xs text-muted-foreground">
+                                {tx.notes}
+                              </p>
+                            )}
                           </div>
-                        </td>
-                        <td className="px-4 py-3">
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1.5">
                           {user && (
                             <CategoryCell
                               tx={tx}
@@ -678,35 +727,26 @@ export default function ExpensesPage() {
                               isPending={isCategoryPending}
                             />
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {tx.cardLastFour && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-xs font-medium ${cardColor(tx.cardLastFour)}`}
-                            >
-                              {tx.cardLastFour}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className={`whitespace-nowrap px-4 py-3 text-end font-medium tabular-nums ${
-                            isCredit ? 'text-primary' : ''
-                          }`}
-                        >
-                          {formatILS(Math.abs(tx.amountAgorot))}
-                        </td>
-                      </tr>
-                      {expandedNotesId === tx.id && user && (
-                        <tr
-                          key={`${tx.id}-notes`}
-                          className="border-b border-border/50 bg-surface-2/30"
-                        >
-                          <td colSpan={5} className="p-0">
-                            <NotesPanel transactionId={tx.id} userId={user.id} />
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
+                          {user && <NotesButton transactionId={tx.id} userId={user.id} />}
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {tx.cardLastFour && (
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-medium ${cardColor(tx.cardLastFour)}`}
+                          >
+                            {tx.cardLastFour}
+                          </span>
+                        )}
+                      </td>
+                      <td
+                        className={`whitespace-nowrap px-4 py-3 text-end font-medium tabular-nums ${
+                          isCredit ? 'text-primary' : ''
+                        }`}
+                      >
+                        {formatILS(Math.abs(tx.amountAgorot))}
+                      </td>
+                    </tr>
                   )
                 })}
             </tbody>
