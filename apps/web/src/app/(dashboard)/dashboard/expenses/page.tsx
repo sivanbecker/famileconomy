@@ -1,7 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search, X, ChevronUp, ChevronDown, ChevronsUpDown, AlertTriangle } from 'lucide-react'
+import {
+  Search,
+  X,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  AlertTriangle,
+  Copy,
+} from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { categoryBreakdown } from '@famileconomy/utils'
 import { AccountSelector } from '../../../../components/account-selector'
@@ -152,6 +160,7 @@ export default function ExpensesPage() {
   const [maxAmount, setMaxAmount] = useState('')
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
 
   const userId = user?.id
 
@@ -198,8 +207,17 @@ export default function ExpensesPage() {
     const anomalyCount = transactions.filter((tx: Transaction) =>
       isAnomaly(tx, categoryAverages)
     ).length
-    return { totalExpenses, anomalyCount }
+    const withinFileDupCount = transactions.filter(
+      (tx: Transaction) => tx.status === 'WITHIN_FILE_DUPLICATE'
+    ).length
+    return { totalExpenses, anomalyCount, withinFileDupCount }
   }, [transactions, categoryAverages])
+
+  // Filtered list (apply showDuplicatesOnly on top of server-filtered list)
+  const displayedTransactions = useMemo(() => {
+    if (!showDuplicatesOnly) return transactions
+    return transactions.filter((tx: Transaction) => tx.status === 'WITHIN_FILE_DUPLICATE')
+  }, [transactions, showDuplicatesOnly])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -228,9 +246,10 @@ export default function ExpensesPage() {
     setCategoryFilter('')
     setMinAmount('')
     setMaxAmount('')
+    setShowDuplicatesOnly(false)
   }
 
-  const hasFilters = search || categoryFilter || minAmount || maxAmount
+  const hasFilters = search || categoryFilter || minAmount || maxAmount || showDuplicatesOnly
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -244,7 +263,7 @@ export default function ExpensesPage() {
       </div>
 
       {/* ── Stats row ── */}
-      <div className="flex gap-4">
+      <div className="flex flex-wrap gap-4">
         <div className="rounded-lg bg-surface px-4 py-3 shadow-card-md">
           <p className="text-xs text-muted-foreground">סה״כ הוצאות</p>
           <p className="text-lg font-bold text-destructive">{formatILS(stats.totalExpenses)}</p>
@@ -261,6 +280,22 @@ export default function ExpensesPage() {
               <p className="text-lg font-bold text-yellow-500">{stats.anomalyCount}</p>
             </div>
           </div>
+        )}
+        {stats.withinFileDupCount > 0 && (
+          <button
+            onClick={() => setShowDuplicatesOnly(v => !v)}
+            className={`flex items-center gap-2 rounded-lg px-4 py-3 shadow-card-md transition-colors ${
+              showDuplicatesOnly
+                ? 'bg-orange-500/20 ring-1 ring-orange-500/60'
+                : 'bg-orange-500/10 hover:bg-orange-500/15'
+            }`}
+          >
+            <Copy className="h-4 w-4 text-orange-500" />
+            <div className="text-start">
+              <p className="text-xs text-muted-foreground">כפולות חשודות</p>
+              <p className="text-lg font-bold text-orange-500">{stats.withinFileDupCount}</p>
+            </div>
+          </button>
         )}
       </div>
 
@@ -386,7 +421,7 @@ export default function ExpensesPage() {
                   </tr>
                 ))}
 
-              {!isLoading && transactions.length === 0 && (
+              {!isLoading && displayedTransactions.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">
                     {hasFilters ? 'לא נמצאו עסקאות התואמות את הסינון.' : 'אין עסקאות לחודש זה.'}
@@ -395,14 +430,15 @@ export default function ExpensesPage() {
               )}
 
               {!isLoading &&
-                transactions.map(tx => {
+                displayedTransactions.map(tx => {
                   const anomaly = isAnomaly(tx, categoryAverages)
+                  const isWithinFileDup = tx.status === 'WITHIN_FILE_DUPLICATE'
                   const isCredit = tx.amountAgorot < 0
                   return (
                     <tr
                       key={tx.id}
                       className={`border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        anomaly ? 'bg-yellow-500/5' : ''
+                        isWithinFileDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -410,7 +446,12 @@ export default function ExpensesPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
-                          {anomaly && (
+                          {isWithinFileDup && (
+                            <span title="עסקה חשודה ככפולה בתוך הקובץ">
+                              <Copy className="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
+                            </span>
+                          )}
+                          {anomaly && !isWithinFileDup && (
                             <span title="סכום חריג לקטגוריה זו">
                               <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
                             </span>
