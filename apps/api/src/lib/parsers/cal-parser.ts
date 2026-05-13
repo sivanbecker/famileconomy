@@ -34,6 +34,18 @@ function parseDateDMYY(raw: string): Date | null {
   return isNaN(date.getTime()) ? null : date
 }
 
+// Cal dates (newer export format): YYYY-MM-DD HH:MM:SS (e.g. 2026-05-07 00:00:00)
+function parseDateISO(raw: string): Date | null {
+  const match = /^(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}$/.exec(raw.trim())
+  if (!match) return null
+  const date = new Date(match[1] as string)
+  return isNaN(date.getTime()) ? null : date
+}
+
+function parseCalDate(raw: string): Date | null {
+  return parseDateDMYY(raw) ?? parseDateISO(raw)
+}
+
 // Strip currency prefix (₪ / $) and thousands commas, return numeric string.
 // e.g. "₪ 1,734.00" → "1734.00",  "$ 33.45" → "33.45"
 function stripCurrencyPrefix(raw: string): { value: string; currency: string } {
@@ -183,7 +195,7 @@ export function parseCalCsv(csv: string): ParsedTransaction[] {
 
     const cols = splitCsvLine(line)
 
-    const txDate = parseDateDMYY(cols[COL_TX_DATE] ?? '')
+    const txDate = parseCalDate(cols[COL_TX_DATE] ?? '')
     if (!txDate) continue
 
     const description = (cols[COL_DESCRIPTION] ?? '').trim()

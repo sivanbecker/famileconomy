@@ -284,6 +284,56 @@ describe('parseCalCsv', () => {
     })
   })
 
+  describe('ISO 8601 datetime date format (real CAL export)', () => {
+    // CAL started exporting dates as "YYYY-MM-DD HH:MM:SS" (e.g. "2026-05-07 00:00:00")
+    // instead of the older "D/M/YY" short format. Amounts are also plain numbers (no ₪ prefix).
+    const ISO_HEADER = `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-1234,,,,,,\r
+,,,,,,\r
+"עסקאות לחיוב ב-10/05/2026: 5,062.48 ₪",,,,,,\r
+"תאריך\r
+עסקה",שם בית עסק,"סכום\r
+עסקה","סכום\r
+חיוב","סוג\r
+עסקה",ענף,הערות\r`
+
+    const makeIsoCsv = (...dataRows: string[]) =>
+      [ISO_HEADER, ...dataRows, ',,,,,,\r', 'את המידע המלא,,,,,,'].join('\n')
+
+    it('parses a date in YYYY-MM-DD HH:MM:SS format', () => {
+      const csv = makeIsoCsv(
+        '2026-05-07 00:00:00,ויקטורי שבעת הכוכבים,386.64,193.64,תשלומים,מזון ומשקאות,תשלום 1 מתוך 2\r'
+      )
+      const result = parseCalCsv(csv)
+      expect(result).toHaveLength(1)
+      expect(result[0]?.transactionDate).toEqual(new Date('2026-05-07'))
+    })
+
+    it('parses amounts without currency prefix as ILS', () => {
+      const csv = makeIsoCsv('2026-05-06 00:00:00,רמי לוי,33.57,33.57,רגילה,מזון ומשקאות,\r')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.amountAgorot).toBe(3357)
+      expect(result[0]?.originalCurrency).toBe('ILS')
+    })
+
+    it('parses integer amounts (no decimal point) as ILS shekels', () => {
+      const csv = makeIsoCsv('2026-04-15 00:00:00,פיצה שמש,58,58,רגילה,מסעדות,\r')
+      const result = parseCalCsv(csv)
+      expect(result[0]?.amountAgorot).toBe(5800)
+    })
+
+    it('parses installment rows with ISO dates', () => {
+      const csv = makeIsoCsv(
+        '2026-05-07 00:00:00,ויקטורי שבעת הכוכבים,386.64,193.64,תשלומים,מזון ומשקאות,תשלום 1 מתוך 2\r'
+      )
+      const result = parseCalCsv(csv)
+      const tx = result[0] as ParsedTransaction
+      expect(tx.installmentNum).toBe(1)
+      expect(tx.installmentOf).toBe(2)
+      expect(tx.amountAgorot).toBe(19364)
+      expect(tx.originalAmountAgorot).toBe(38664)
+    })
+  })
+
   describe('full fixture', () => {
     const fixturePath = resolve(__dirname, '../../../../examples/cal monthly report example.csv')
     // eslint-disable-next-line security/detect-non-literal-fs-filename
@@ -294,6 +344,25 @@ describe('parseCalCsv', () => {
         const csv = await readFile(fixturePath, 'utf-8')
         const result = parseCalCsv(csv)
         expect(result).toHaveLength(20)
+      }
+    )
+
+    const newFixturePath = resolve(
+      __dirname,
+      '../../../../examples/cal-may-2026-20260513101928-4321.csv'
+    )
+    // eslint-disable-next-line security/detect-non-literal-fs-filename
+    it.skipIf(!existsSync(newFixturePath))(
+      'parses all 27 transaction rows from the new ISO-date CAL export',
+      async () => {
+        const { readFile } = await import('node:fs/promises')
+        const csv = await readFile(newFixturePath, 'utf-8')
+        const result = parseCalCsv(csv)
+        expect(result).toHaveLength(27)
+        // Spot-check first row
+        expect(result[0]?.transactionDate).toEqual(new Date('2026-05-07'))
+        expect(result[0]?.amountAgorot).toBe(19364)
+        expect(result[0]?.originalAmountAgorot).toBe(38664)
       }
     )
   })
