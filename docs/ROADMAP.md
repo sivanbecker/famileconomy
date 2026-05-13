@@ -170,6 +170,7 @@
 - [x] Transaction detail / edit category inline
 - [x] Anomaly highlighting (transactions > 2× category average)
 - [x] Within-file duplicate detection: rows with same date+amount+description in one file imported as `WITHIN_FILE_DUPLICATE`; expenses page highlights them orange + filter button; import report explains how many were flagged
+- [~] Import and store הערות (notes) column from MAX and CAL files; display as subtitle in expenses list
 
 ### 7e — Safe-to-Spend
 

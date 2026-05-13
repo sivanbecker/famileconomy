@@ -58,6 +58,7 @@ export interface Transaction {
   dedupeHash: string | null;
   installmentNum: number | null;
   installmentOf: number | null;
+  notes: string | null;
   duplicateOf: string | null;
   createdAt: Date;
   account?: Account;

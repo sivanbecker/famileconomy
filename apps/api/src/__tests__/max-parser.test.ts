@@ -130,6 +130,30 @@ describe('parseMaxCsv', () => {
     })
   })
 
+  describe('notes field', () => {
+    it('stores raw notes text on the parsed transaction', () => {
+      const csv = makeCsv(
+        '13-04-2026,PAYBOX TEL AVIV IL,העברת כספים,5432,רגילה,30,₪,30,₪,10-05-2026,למי: יובל בקר,,,,טלפוני,'
+      )
+      const result = parseMaxCsv(csv)
+      expect(result[0]?.notes).toBe('למי: יובל בקר')
+    })
+
+    it('stores null when the notes column is empty', () => {
+      const csv = makeCsv('09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,')
+      const result = parseMaxCsv(csv)
+      expect(result[0]?.notes).toBeNull()
+    })
+
+    it('stores raw installment note text as-is', () => {
+      const csv = makeCsv(
+        '30-07-2025,קיי.אס.פי הרצליה,חשמל ומחשבים,0017,תשלומים,309,₪,4642,₪,10-05-2026,תשלום 10 מתוך 15,,,,אינטרנט,'
+      )
+      const result = parseMaxCsv(csv)
+      expect(result[0]?.notes).toBe('תשלום 10 מתוך 15')
+    })
+  })
+
   describe('empty / edge cases', () => {
     it('returns empty array for CSV with only headers and footer', () => {
       const csv = makeCsv()

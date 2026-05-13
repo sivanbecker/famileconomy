@@ -52,6 +52,7 @@ export interface TransactionRow {
   status: string
   installmentNum: number | null
   installmentOf: number | null
+  notes: string | null
 }
 
 export interface AccountRow {
@@ -169,6 +170,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         status: true,
         installmentNum: true,
         installmentOf: true,
+        notes: true,
       },
       // Default DB sort; amount/description sorts are applied after decryption below
       orderBy:
@@ -188,6 +190,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       status: row.status,
       installmentNum: row.installmentNum,
       installmentOf: row.installmentOf,
+      notes: row.notes,
     }))
 
     // Post-decrypt filters (description search and amount range operate on plaintext)

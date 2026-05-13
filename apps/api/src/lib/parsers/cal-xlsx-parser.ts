@@ -269,6 +269,7 @@ export async function parseCalXlsx(buffer: Buffer): Promise<ParsedTransaction[]>
       installmentNum: installment?.num ?? null,
       installmentOf: installment?.of ?? null,
       isPending,
+      notes: notes || null,
     })
   }
 

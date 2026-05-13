@@ -111,6 +111,7 @@ model Transaction {
   dedupeHash      String?           @map("dedupe_hash")
   installmentNum  Int?              @map("installment_num")
   installmentOf   Int?              @map("installment_of")
+  notes           String?
   duplicateOf     String?           @map("duplicate_of")
   createdAt       DateTime          @default(now()) @map("created_at")
 
