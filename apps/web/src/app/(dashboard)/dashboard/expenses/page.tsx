@@ -326,8 +326,7 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
           ref={dialogRef}
           role="dialog"
           aria-label="הערות לעסקה"
-          className="absolute end-0 top-6 z-50 w-72 rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
-          style={{ minWidth: '260px' }}
+          className="absolute end-0 top-6 z-50 w-72 max-w-[calc(100vw-2rem)] rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
         >
           <p className="mb-2 text-xs font-semibold text-muted-foreground">הערות</p>
 
@@ -499,7 +498,7 @@ export default function ExpensesPage() {
   return (
     <div className="flex flex-col gap-4 p-6">
       {/* ── Top bar ── */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-display-sm">הוצאות</h1>
         <div className="flex items-center gap-3">
           {user && <AccountSelector userId={user.id} />}
@@ -580,22 +579,22 @@ export default function ExpensesPage() {
           ))}
         </select>
 
-        {/* Amount range */}
-        <div className="flex items-center gap-1">
+        {/* Amount range — full-width on mobile so it doesn't squeeze inline */}
+        <div className="flex w-full items-center gap-1 sm:w-auto">
           <input
             type="number"
             placeholder="מינ׳ ₪"
             value={minAmount}
             onChange={e => setMinAmount(e.target.value)}
-            className="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary sm:w-24"
           />
-          <span className="text-muted-foreground">—</span>
+          <span className="shrink-0 text-muted-foreground">—</span>
           <input
             type="number"
             placeholder="מקס׳ ₪"
             value={maxAmount}
             onChange={e => setMaxAmount(e.target.value)}
-            className="w-24 rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+            className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary sm:w-24"
           />
         </div>
 
@@ -633,7 +632,7 @@ export default function ExpensesPage() {
                     תיאור <SortIcon field="description" sortBy={sortBy} sortDir={sortDir} />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-start">
+                <th className="hidden px-4 py-3 text-start sm:table-cell">
                   <button
                     className="flex items-center gap-1 hover:text-foreground"
                     onClick={() => handleSort('category')}
@@ -641,7 +640,7 @@ export default function ExpensesPage() {
                     קטגוריה <SortIcon field="category" sortBy={sortBy} sortDir={sortDir} />
                   </button>
                 </th>
-                <th className="px-4 py-3 text-start">כרטיס</th>
+                <th className="hidden px-4 py-3 text-start sm:table-cell">כרטיס</th>
                 <th className="px-4 py-3 text-end">
                   <button
                     className="flex items-center gap-1 hover:text-foreground ms-auto"
@@ -662,10 +661,10 @@ export default function ExpensesPage() {
                     <td className="px-4 py-3">
                       <div className="h-4 w-40 animate-pulse rounded bg-surface-2" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden px-4 py-3 sm:table-cell">
                       <div className="h-5 w-16 animate-pulse rounded-full bg-surface-2" />
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="hidden px-4 py-3 sm:table-cell">
                       <div className="h-5 w-12 animate-pulse rounded-full bg-surface-2" />
                     </td>
                     <td className="px-4 py-3 text-end">
@@ -711,7 +710,7 @@ export default function ExpensesPage() {
                           )}
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className="max-w-64 truncate font-medium">
+                              <span className="truncate font-medium sm:max-w-64">
                                 {tx.description}
                               </span>
                               {tx.installmentNum !== null && tx.installmentOf !== null && (
@@ -721,14 +720,14 @@ export default function ExpensesPage() {
                               )}
                             </div>
                             {tx.notes && (
-                              <p className="max-w-64 truncate text-xs text-muted-foreground">
+                              <p className="truncate text-xs text-muted-foreground sm:max-w-64">
                                 {tx.notes}
                               </p>
                             )}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="hidden px-4 py-3 sm:table-cell">
                         <div className="flex items-center gap-1.5">
                           {user && (
                             <CategoryCell
@@ -743,7 +742,7 @@ export default function ExpensesPage() {
                           {user && <NotesButton transactionId={tx.id} userId={user.id} />}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="hidden px-4 py-3 sm:table-cell">
                         {tx.cardLastFour && (
                           <span
                             className={`rounded-full px-2 py-0.5 text-xs font-medium ${cardColor(tx.cardLastFour)}`}
