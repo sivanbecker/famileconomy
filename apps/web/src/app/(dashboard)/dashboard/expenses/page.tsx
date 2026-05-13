@@ -8,6 +8,7 @@ import {
   ChevronDown,
   ChevronsUpDown,
   AlertTriangle,
+  AlertCircle,
   Copy,
   MessageSquare,
   Plus,
@@ -400,13 +401,11 @@ export default function ExpensesPage() {
     return f
   }, [search, categoryFilter, minAmount, maxAmount, sortBy, sortDir])
 
-  const { data: transactions = [], isLoading } = useExpenses(
-    activeAccountId,
-    year,
-    month,
-    filters,
-    userId
-  )
+  const {
+    data: transactions = [],
+    isLoading,
+    isError,
+  } = useExpenses(activeAccountId, year, month, filters, userId)
 
   const { mutate: updateCategory, isPending: isCategoryPending } = useUpdateCategory(
     activeAccountId,
@@ -542,6 +541,14 @@ export default function ExpensesPage() {
           </button>
         )}
       </div>
+
+      {/* ── Fetch error ── */}
+      {isError && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>לא ניתן לטעון נתונים. בדוק את החיבור לרשת ונסה שוב.</span>
+        </div>
+      )}
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface p-4 shadow-card-md">
@@ -688,7 +695,7 @@ export default function ExpensesPage() {
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                         {tx.transactionDate}
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="min-w-0 px-4 py-3">
                         <div className="flex items-center gap-2">
                           {isSuspectedDup && (
                             <span title="עסקה חשודה ככפולה בתוך הקובץ">

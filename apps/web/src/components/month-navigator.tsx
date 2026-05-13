@@ -26,7 +26,7 @@ interface MonthNavigatorProps {
 }
 
 export function MonthNavigator({ year, month, onPrev, onNext }: MonthNavigatorProps) {
-  const monthName = HEBREW_MONTHS[month - 1]
+  const monthName = HEBREW_MONTHS[month - 1] ?? String(month)
 
   // In RTL layout the visual reading order is: [next ›] [month label] [‹ prev]
   // ChevronRight points toward the end of the inline axis — in RTL that is

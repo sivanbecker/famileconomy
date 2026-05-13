@@ -46,7 +46,7 @@ export function KpiCard({
       </div>
 
       <p
-        className={`text-display-sm font-extrabold ${isNegative ? 'text-destructive' : variantAmountClass(variant)}`}
+        className={`text-display-sm font-extrabold tabular-nums ${isNegative ? 'text-destructive' : variantAmountClass(variant)}`}
         data-negative={isNegative ? 'true' : undefined}
       >
         {formatILS(amountAgorot)}

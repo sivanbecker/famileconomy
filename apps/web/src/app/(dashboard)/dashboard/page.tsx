@@ -1,7 +1,15 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank, BarChart2, RefreshCw } from 'lucide-react'
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  PiggyBank,
+  BarChart2,
+  RefreshCw,
+  AlertCircle,
+} from 'lucide-react'
 import { categoryBreakdown } from '@famileconomy/utils'
 import { MonthNavigator } from '../../../components/month-navigator'
 import { KpiCard } from '../../../components/kpi-card'
@@ -21,12 +29,11 @@ export default function DashboardPage() {
   const { activeAccountId } = useAccountStore()
 
   const userId = user?.id
-  const { data: transactions = [], isLoading: txLoading } = useTransactions(
-    activeAccountId,
-    year,
-    month,
-    userId
-  )
+  const {
+    data: transactions = [],
+    isLoading: txLoading,
+    isError: txError,
+  } = useTransactions(activeAccountId, year, month, userId)
   const { data: summary, isLoading: summaryLoading } = useMonthSummary(
     activeAccountId,
     year,
@@ -93,6 +100,14 @@ export default function DashboardPage() {
           variant="highlight"
         />
       </div>
+
+      {/* ── Fetch error ── */}
+      {txError && (
+        <div className="flex items-center gap-2.5 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>לא ניתן לטעון נתונים. בדוק את החיבור לרשת ונסה שוב.</span>
+        </div>
+      )}
 
       {/* ── Charts row ── */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
