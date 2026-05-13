@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Wallet, TrendingUp, TrendingDown, PiggyBank } from 'lucide-react'
+import { Wallet, TrendingUp, TrendingDown, PiggyBank, BarChart2, RefreshCw } from 'lucide-react'
 import { categoryBreakdown } from '@famileconomy/utils'
 import { MonthNavigator } from '../../../components/month-navigator'
 import { KpiCard } from '../../../components/kpi-card'
@@ -102,7 +102,16 @@ export default function DashboardPage() {
         </div>
         <div className="flex min-h-64 flex-col gap-2 rounded-lg bg-surface p-4 shadow-card-md">
           <h2 className="font-semibold">צפי להוצאות עד סוף החודש</h2>
-          <p className="mt-auto text-sm text-muted-foreground">ייבא עסקאות כדי לראות את הגרף.</p>
+          <div className="mt-auto flex flex-col items-center gap-3 py-6 text-center">
+            <BarChart2 className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">אין מספיק נתונים להצגת צפי.</p>
+            <a
+              href="/dashboard/expenses"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              ייבא עסקאות
+            </a>
+          </div>
         </div>
       </div>
 
@@ -118,7 +127,16 @@ export default function DashboardPage() {
         </div>
         <div className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card-md">
           <h2 className="font-semibold">תשלומים קבועים החודש</h2>
-          <p className="text-sm text-muted-foreground">לא הוגדרו תשלומים קבועים.</p>
+          <div className="flex flex-col items-center gap-3 py-6 text-center">
+            <RefreshCw className="h-8 w-8 text-muted-foreground/40" aria-hidden="true" />
+            <p className="text-sm text-muted-foreground">לא הוגדרו תשלומים קבועים עדיין.</p>
+            <a
+              href="/dashboard/recurring"
+              className="text-sm font-medium text-primary hover:underline"
+            >
+              הגדר תשלומים קבועים
+            </a>
+          </div>
         </div>
       </div>
     </div>

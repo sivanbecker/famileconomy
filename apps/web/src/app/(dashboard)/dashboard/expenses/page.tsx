@@ -517,11 +517,11 @@ export default function ExpensesPage() {
           <p className="text-lg font-bold">{transactions.length}</p>
         </div>
         {stats.anomalyCount > 0 && (
-          <div className="flex items-center gap-2 rounded-lg bg-yellow-500/10 px-4 py-3 shadow-card-md">
-            <AlertTriangle className="h-4 w-4 text-yellow-500" />
+          <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 shadow-card-md">
+            <AlertTriangle className="h-4 w-4 text-warning" />
             <div>
               <p className="text-xs text-muted-foreground">חריגות</p>
-              <p className="text-lg font-bold text-yellow-500">{stats.anomalyCount}</p>
+              <p className="text-lg font-bold text-warning">{stats.anomalyCount}</p>
             </div>
           </div>
         )}
@@ -530,14 +530,14 @@ export default function ExpensesPage() {
             onClick={() => setShowDuplicatesOnly(v => !v)}
             className={`flex items-center gap-2 rounded-lg px-4 py-3 shadow-card-md transition-colors ${
               showDuplicatesOnly
-                ? 'bg-orange-500/20 ring-1 ring-orange-500/60'
-                : 'bg-orange-500/10 hover:bg-orange-500/15'
+                ? 'bg-warning/20 ring-1 ring-warning/60'
+                : 'bg-warning/10 hover:bg-warning/15'
             }`}
           >
-            <Copy className="h-4 w-4 text-orange-500" />
+            <Copy className="h-4 w-4 text-warning" />
             <div className="text-start">
               <p className="text-xs text-muted-foreground">כפולות חשודות</p>
-              <p className="text-lg font-bold text-orange-500">{stats.withinFileDupCount}</p>
+              <p className="text-lg font-bold text-warning">{stats.withinFileDupCount}</p>
             </div>
           </button>
         )}
@@ -682,7 +682,7 @@ export default function ExpensesPage() {
                     <tr
                       key={tx.id}
                       className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isSuspectedDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
+                        isSuspectedDup ? 'bg-warning/5' : anomaly ? 'bg-warning/5' : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
@@ -692,12 +692,12 @@ export default function ExpensesPage() {
                         <div className="flex items-center gap-2">
                           {isSuspectedDup && (
                             <span title="עסקה חשודה ככפולה בתוך הקובץ">
-                              <Copy className="h-3.5 w-3.5 flex-shrink-0 text-orange-500" />
+                              <Copy className="h-3.5 w-3.5 flex-shrink-0 text-warning" />
                             </span>
                           )}
                           {anomaly && !isSuspectedDup && (
                             <span title="סכום חריג לקטגוריה זו">
-                              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-yellow-500" />
+                              <AlertTriangle className="h-3.5 w-3.5 flex-shrink-0 text-warning" />
                             </span>
                           )}
                           <div className="min-w-0">

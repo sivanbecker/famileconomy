@@ -107,7 +107,10 @@ export function TransactionList({
     return (
       <div className="flex flex-col gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-10 animate-pulse rounded-md bg-surface-2" />
+          <div
+            key={i}
+            className="h-10 animate-pulse motion-reduce:animate-none rounded-md bg-surface-2"
+          />
         ))}
       </div>
     )

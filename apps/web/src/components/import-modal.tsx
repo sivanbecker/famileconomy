@@ -171,8 +171,8 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                 )}
 
                 {importResult.withinFileDuplicates > 0 && (
-                  <div className="rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2.5 text-sm">
-                    <p className="font-medium text-orange-500">
+                  <div className="rounded-md border border-warning/30 bg-warning/5 px-3 py-2.5 text-sm">
+                    <p className="font-medium text-warning">
                       {importResult.withinFileDuplicates} עסקאות חשודות ככפולות בתוך הקובץ
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">

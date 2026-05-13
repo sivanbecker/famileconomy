@@ -52,13 +52,13 @@ export default function RegisterPage() {
         <div className="flex flex-col gap-1">
           <label htmlFor="name">שם</label>
           <Input id="name" type="text" autoComplete="name" {...register('name')} />
-          {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+          {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="email">אימייל</label>
           <Input id="email" type="email" autoComplete="email" {...register('email')} />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -69,13 +69,13 @@ export default function RegisterPage() {
             autoComplete="new-password"
             {...register('password')}
           />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+          {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         </div>
 
         <input type="hidden" {...register('locale')} />
 
         {errors.root && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.root.message}
           </p>
         )}

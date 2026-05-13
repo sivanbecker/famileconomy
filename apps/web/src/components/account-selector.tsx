@@ -22,7 +22,10 @@ export function AccountSelector({ userId }: AccountSelectorProps) {
 
   if (isLoading) {
     return (
-      <div className="h-9 w-40 animate-pulse rounded-md bg-surface-2" aria-label="טוען חשבונות" />
+      <div
+        className="h-9 w-40 animate-pulse motion-reduce:animate-none rounded-md bg-surface-2"
+        aria-label="טוען חשבונות"
+      />
     )
   }
 

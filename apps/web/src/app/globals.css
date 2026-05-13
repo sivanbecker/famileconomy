@@ -101,8 +101,15 @@
     @apply bg-background text-foreground;
     font-family: 'Heebo', 'Segoe UI', system-ui, sans-serif;
     font-feature-settings: 'kern' 1;
+    font-optical-sizing: auto;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
   }
 
   :focus-visible {

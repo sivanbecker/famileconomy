@@ -49,7 +49,7 @@ export default function LoginPage() {
         <div className="flex flex-col gap-1">
           <label htmlFor="email">אימייל</label>
           <Input id="email" type="email" autoComplete="email" {...register('email')} />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+          {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="flex flex-col gap-1">
@@ -60,11 +60,11 @@ export default function LoginPage() {
             autoComplete="current-password"
             {...register('password')}
           />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+          {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
         </div>
 
         {errors.root && (
-          <p role="alert" className="text-sm text-red-600">
+          <p role="alert" className="text-sm text-destructive">
             {errors.root.message}
           </p>
         )}
