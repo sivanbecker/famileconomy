@@ -50,6 +50,7 @@ export interface TransactionRow {
   category: string | null
   cardLastFour: string | null
   status: string
+  reviewStatus: string | null
   installmentNum: number | null
   installmentOf: number | null
   notes: string | null
@@ -168,6 +169,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         category: true,
         cardLastFour: true,
         status: true,
+        reviewStatus: true,
         installmentNum: true,
         installmentOf: true,
         notes: true,
@@ -188,6 +190,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       category: row.category,
       cardLastFour: row.cardLastFour,
       status: row.status,
+      reviewStatus: row.reviewStatus,
       installmentNum: row.installmentNum,
       installmentOf: row.installmentOf,
       notes: row.notes,

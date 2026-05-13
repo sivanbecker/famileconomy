@@ -165,6 +165,8 @@
 
 ### 7d — Expenses Page
 
+- [~] Transaction review: mark reviewed (green check) / flag for double-check (yellow flag), bulk-select + bulk-mark, filter by review status in filter modal
+
 - [x] `GET /transactions` pagination + filtering by category, date range, min/max amount
 - [x] Expenses page (`/dashboard/expenses`): full transaction list with search, filter, sort
 - [x] Transaction detail / edit category inline

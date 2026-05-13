@@ -32,6 +32,8 @@
     --destructive-foreground: oklch(98% 0.005 25);
     --warning: oklch(72% 0.18 65);
     --warning-foreground: oklch(20% 0.06 65);
+    --success: oklch(62% 0.17 142);
+    --success-foreground: oklch(16% 0.04 142);
 
     /* Muted — mid-tones for secondary text and backgrounds */
     --muted: oklch(19% 0.01 170);
@@ -78,6 +80,8 @@
     --destructive-foreground: oklch(98% 0.004 25);
     --warning: oklch(58% 0.17 65);
     --warning-foreground: oklch(16% 0.06 65);
+    --success: oklch(50% 0.15 142);
+    --success-foreground: oklch(98% 0.004 142);
 
     --muted: oklch(95% 0.007 170);
     --muted-foreground: oklch(46% 0.01 170);
