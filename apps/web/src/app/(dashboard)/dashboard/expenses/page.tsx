@@ -390,6 +390,8 @@ export default function ExpensesPage() {
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
+  const [showStandingOrdersOnly, setShowStandingOrdersOnly] = useState(false)
+  const [showInstallmentsOnly, setShowInstallmentsOnly] = useState(false)
 
   const userId = user?.id
 
@@ -447,6 +449,16 @@ export default function ExpensesPage() {
     return ids
   }, [transactions])
 
+  // Counts for notes-based filter chips
+  const standingOrderCount = useMemo(
+    () => transactions.filter((tx: Transaction) => tx.notes?.includes('הוראת קבע')).length,
+    [transactions]
+  )
+  const installmentCount = useMemo(
+    () => transactions.filter((tx: Transaction) => tx.installmentNum !== null).length,
+    [transactions]
+  )
+
   // Summary stats
   const stats = useMemo(() => {
     const slices = categoryBreakdown(transactions)
@@ -457,11 +469,22 @@ export default function ExpensesPage() {
     return { totalExpenses, anomalyCount, withinFileDupCount: suspectedDupIds.size }
   }, [transactions, categoryAverages, suspectedDupIds])
 
-  // Filtered list (apply showDuplicatesOnly on top of server-filtered list)
+  // Filtered list (apply client-side toggles on top of server-filtered list)
   const displayedTransactions = useMemo(() => {
-    if (!showDuplicatesOnly) return transactions
-    return transactions.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
-  }, [transactions, showDuplicatesOnly, suspectedDupIds])
+    let result = transactions
+    if (showDuplicatesOnly) result = result.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
+    if (showStandingOrdersOnly)
+      result = result.filter((tx: Transaction) => tx.notes?.includes('הוראת קבע'))
+    if (showInstallmentsOnly)
+      result = result.filter((tx: Transaction) => tx.installmentNum !== null)
+    return result
+  }, [
+    transactions,
+    showDuplicatesOnly,
+    showStandingOrdersOnly,
+    showInstallmentsOnly,
+    suspectedDupIds,
+  ])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -491,9 +514,18 @@ export default function ExpensesPage() {
     setMinAmount('')
     setMaxAmount('')
     setShowDuplicatesOnly(false)
+    setShowStandingOrdersOnly(false)
+    setShowInstallmentsOnly(false)
   }
 
-  const hasFilters = search || categoryFilter || minAmount || maxAmount || showDuplicatesOnly
+  const hasFilters =
+    search ||
+    categoryFilter ||
+    minAmount ||
+    maxAmount ||
+    showDuplicatesOnly ||
+    showStandingOrdersOnly ||
+    showInstallmentsOnly
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -597,6 +629,38 @@ export default function ExpensesPage() {
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary sm:w-24"
           />
         </div>
+
+        {/* Notes-based filter chips */}
+        {standingOrderCount > 0 && (
+          <button
+            onClick={() => setShowStandingOrdersOnly(v => !v)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              showStandingOrdersOnly
+                ? 'border-primary bg-primary/15 text-primary'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            הוראת קבע
+            <span className="rounded-full bg-current/10 px-1.5 py-0.5 tabular-nums opacity-70">
+              {standingOrderCount}
+            </span>
+          </button>
+        )}
+        {installmentCount > 0 && (
+          <button
+            onClick={() => setShowInstallmentsOnly(v => !v)}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+              showInstallmentsOnly
+                ? 'border-primary bg-primary/15 text-primary'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            תשלומים
+            <span className="rounded-full bg-current/10 px-1.5 py-0.5 tabular-nums opacity-70">
+              {installmentCount}
+            </span>
+          </button>
+        )}
 
         {/* Clear */}
         {hasFilters && (
