@@ -21,7 +21,9 @@ describe('DriveImportService', () => {
     vi.mocked(ImportService).mockImplementation(
       () =>
         ({
-          importCsv: vi.fn().mockResolvedValue({ inserted: 2, duplicates: 0, errors: [] }),
+          importCsv: vi
+            .fn()
+            .mockResolvedValue({ inserted: 2, duplicates: 0, withinFileDuplicates: 0, errors: [] }),
         }) as never
     )
   })

@@ -22,6 +22,7 @@ export interface DuplicateRecord {
 export interface ImportResult {
   inserted: number
   duplicates: number
+  withinFileDuplicates: number
   errors: string[]
   skippedRows: DuplicateRecord[]
 }
@@ -147,6 +148,7 @@ export class ImportService {
 
     let inserted = 0
     let duplicates = 0
+    let withinFileDuplicates = 0
     const skippedRows: DuplicateRecord[] = []
 
     for (const cardLastFour of cardIdentifiers) {
@@ -160,10 +162,11 @@ export class ImportService {
       const result = await this.insertRows(rows, accountId, batch.id, userId)
       inserted += result.inserted
       duplicates += result.duplicates
+      withinFileDuplicates += result.withinFileDuplicates
       skippedRows.push(...result.skippedRows)
     }
 
-    return { inserted, duplicates, errors: [], skippedRows }
+    return { inserted, duplicates, withinFileDuplicates, errors: [], skippedRows }
   }
 
   // ─── CAL import ─────────────────────────────────────────────────────────────
@@ -189,6 +192,7 @@ export class ImportService {
     return {
       inserted: result.inserted,
       duplicates: result.duplicates,
+      withinFileDuplicates: result.withinFileDuplicates,
       errors: [],
       skippedRows: result.skippedRows,
     }
@@ -209,6 +213,7 @@ export class ImportService {
 
       let inserted = 0
       let duplicates = 0
+      let withinFileDuplicates = 0
       const skippedRows: DuplicateRecord[] = []
 
       for (const cardLastFour of cardIdentifiers) {
@@ -222,10 +227,11 @@ export class ImportService {
         const result = await this.insertRows(rows, accountId, batch.id, userId)
         inserted += result.inserted
         duplicates += result.duplicates
+        withinFileDuplicates += result.withinFileDuplicates
         skippedRows.push(...result.skippedRows)
       }
 
-      return { inserted, duplicates, errors: [], skippedRows }
+      return { inserted, duplicates, withinFileDuplicates, errors: [], skippedRows }
     } catch (err) {
       if (err instanceof ImportError) throw err
       if (err instanceof Error) {
@@ -260,6 +266,7 @@ export class ImportService {
       return {
         inserted: result.inserted,
         duplicates: result.duplicates,
+        withinFileDuplicates: result.withinFileDuplicates,
         errors: [],
         skippedRows: result.skippedRows,
       }
@@ -283,30 +290,53 @@ export class ImportService {
 
   // ─── Row insertion ──────────────────────────────────────────────────────────
 
+  private withinFileGroupKey(row: ParsedTransaction): string {
+    return `${row.transactionDate.toISOString()}|${row.amountAgorot}|${row.description}`
+  }
+
   private async insertRows(
     rows: ParsedTransaction[],
     accountId: string,
     importBatchId: string,
     userId: string
-  ): Promise<{ inserted: number; duplicates: number; skippedRows: DuplicateRecord[] }> {
+  ): Promise<{
+    inserted: number
+    duplicates: number
+    withinFileDuplicates: number
+    skippedRows: DuplicateRecord[]
+  }> {
     let inserted = 0
     let duplicates = 0
+    let withinFileDuplicates = 0
     const skippedRows: DuplicateRecord[] = []
 
-    for (const row of rows) {
+    // Build within-file group map: key → index of the first (canonical) occurrence.
+    const firstOccurrenceIndex = new Map<string, number>()
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      if (row === undefined) continue
+      const key = this.withinFileGroupKey(row)
+      if (!firstOccurrenceIndex.has(key)) firstOccurrenceIndex.set(key, i)
+    }
+
+    // Track the inserted ID of the canonical row for each within-file group so
+    // subsequent rows can point their duplicate_of FK at it.
+    // A null value means the canonical was itself a cross-file duplicate — in that
+    // case the whole group falls through to cross-file duplicate handling.
+    const canonicalIdByKey = new Map<string, string | null>()
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i]
+      if (row === undefined) continue
+
+      const key = this.withinFileGroupKey(row)
+      const isWithinFileDuplicate = firstOccurrenceIndex.get(key) !== i
+
       const dedupeHash = computeDedupeHash({
         accountId,
         transactionDate: row.transactionDate,
         amountAgorot: row.amountAgorot,
         description: row.description,
-      })
-
-      const existing = await prisma.transaction.findFirst({
-        where: { dedupeHash, importBatchId },
-        select: {
-          id: true,
-          importBatch: { select: { filename: true } },
-        },
       })
 
       const baseData = {
@@ -325,7 +355,53 @@ export class ImportService {
         dedupeHash,
       }
 
+      if (isWithinFileDuplicate) {
+        const canonicalId = canonicalIdByKey.get(key)
+        if (canonicalId === null) {
+          // Canonical was a cross-file duplicate — treat this row the same way.
+          // Re-run the DB check to find the original for the duplicate_of FK.
+          const existing = await prisma.transaction.findFirst({
+            where: { dedupeHash, importBatchId },
+            select: { id: true, importBatch: { select: { filename: true } } },
+          })
+          await prisma.transaction.create({
+            data: {
+              ...baseData,
+              status: TransactionStatus.DUPLICATE,
+              ...(existing !== null && { duplicateOf: existing.id }),
+            },
+          })
+          skippedRows.push({
+            date: row.transactionDate.toISOString().slice(0, 10),
+            amountAgorot: row.amountAgorot,
+            description: row.description,
+            originalImportedFrom: existing?.importBatch?.filename ?? null,
+          })
+          duplicates++
+        } else {
+          await prisma.transaction.create({
+            data: {
+              ...baseData,
+              status: TransactionStatus.WITHIN_FILE_DUPLICATE,
+              ...(canonicalId !== undefined && { duplicateOf: canonicalId }),
+            },
+          })
+          withinFileDuplicates++
+          inserted++
+        }
+        continue
+      }
+
+      const existing = await prisma.transaction.findFirst({
+        where: { dedupeHash, importBatchId },
+        select: {
+          id: true,
+          importBatch: { select: { filename: true } },
+        },
+      })
+
       if (existing) {
+        canonicalIdByKey.set(key, null)
         await prisma.transaction.create({
           data: { ...baseData, status: TransactionStatus.DUPLICATE, duplicateOf: existing.id },
         })
@@ -337,9 +413,11 @@ export class ImportService {
         })
         duplicates++
       } else if (row.isPending) {
-        await prisma.transaction.create({
+        const created = await prisma.transaction.create({
           data: { ...baseData, status: TransactionStatus.PENDING },
+          select: { id: true },
         })
+        canonicalIdByKey.set(key, created.id)
         inserted++
       } else {
         // Check if this cleared row settles an existing PENDING transaction
@@ -358,6 +436,7 @@ export class ImportService {
         })
 
         if (pendingMatch) {
+          canonicalIdByKey.set(key, null)
           await prisma.transaction.update({
             where: { id: pendingMatch.id },
             data: {
@@ -380,7 +459,11 @@ export class ImportService {
           })
           duplicates++
         } else {
-          await prisma.transaction.create({ data: baseData })
+          const created = await prisma.transaction.create({
+            data: baseData,
+            select: { id: true },
+          })
+          canonicalIdByKey.set(key, created.id)
 
           await prisma.auditLog.create({
             data: {
@@ -402,6 +485,6 @@ export class ImportService {
       }
     }
 
-    return { inserted, duplicates, skippedRows }
+    return { inserted, duplicates, withinFileDuplicates, skippedRows }
   }
 }

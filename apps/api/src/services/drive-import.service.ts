@@ -68,6 +68,7 @@ export class DriveImportService {
       processedFiles: 0,
       inserted: 0,
       duplicates: 0,
+      withinFileDuplicates: 0,
       errors: [],
     }
 
@@ -105,6 +106,7 @@ export class DriveImportService {
 
         progress.inserted += result.inserted
         progress.duplicates += result.duplicates
+        progress.withinFileDuplicates += result.withinFileDuplicates
         progress.processedFiles += 1
 
         if (result.errors.length > 0) {

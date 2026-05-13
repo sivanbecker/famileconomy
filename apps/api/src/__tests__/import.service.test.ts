@@ -215,7 +215,13 @@ describe('ImportService', () => {
         provider: 'MAX',
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [], skippedRows: [] })
+      expect(result).toEqual({
+        inserted: 1,
+        duplicates: 0,
+        withinFileDuplicates: 0,
+        errors: [],
+        skippedRows: [],
+      })
     })
 
     it('returns inserted=1, duplicates=0 for a single new Cal transaction', async () => {
@@ -225,7 +231,13 @@ describe('ImportService', () => {
         provider: 'CAL',
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [], skippedRows: [] })
+      expect(result).toEqual({
+        inserted: 1,
+        duplicates: 0,
+        withinFileDuplicates: 0,
+        errors: [],
+        skippedRows: [],
+      })
     })
 
     it('creates an ImportBatch record', async () => {
@@ -412,7 +424,13 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [], skippedRows: [] })
+      expect(result).toEqual({
+        inserted: 1,
+        duplicates: 0,
+        withinFileDuplicates: 0,
+        errors: [],
+        skippedRows: [],
+      })
     })
 
     it('includes a skippedRows list in the response', async () => {
@@ -653,7 +671,7 @@ describe('ImportService', () => {
       expect(prisma.transaction.create).toHaveBeenCalledTimes(3)
     })
 
-    it('inserts the first row in a within-file group as CLEARED', async () => {
+    it('inserts the first row in a within-file group without WITHIN_FILE_DUPLICATE status', async () => {
       await service.importCsv({
         csv: MAX_TWO_IDENTICAL_ROWS,
         filename: 'max.csv',
@@ -662,8 +680,10 @@ describe('ImportService', () => {
       })
 
       const firstCall = vi.mocked(prisma.transaction.create).mock.calls[0]
-      expect(firstCall?.[0]).toMatchObject({
-        data: expect.objectContaining({ status: 'CLEARED' }),
+      // CLEARED is the Prisma default and is not explicitly set in the data object.
+      // Assert the first call does NOT carry the within-file duplicate marker.
+      expect(firstCall?.[0]).not.toMatchObject({
+        data: expect.objectContaining({ status: 'WITHIN_FILE_DUPLICATE' }),
       })
     })
 
