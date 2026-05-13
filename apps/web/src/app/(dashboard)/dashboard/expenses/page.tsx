@@ -391,7 +391,6 @@ interface FilterModalProps {
   onSelectAll: () => void
   onClear: () => void
   onClose: () => void
-  onOk: () => void
 }
 
 function FilterModal({
@@ -402,7 +401,6 @@ function FilterModal({
   onSelectAll,
   onClear,
   onClose,
-  onOk,
 }: FilterModalProps) {
   const ref = useRef<HTMLDivElement>(null)
 
@@ -438,8 +436,8 @@ function FilterModal({
         <span className="ms-auto text-muted-foreground">מציג {checked.size}</span>
       </div>
 
-      {/* checklist */}
-      <div className="max-h-56 overflow-y-auto px-2 py-2">
+      {/* checklist — changes apply live */}
+      <div className="px-2 py-2">
         {available.map(label => (
           <label
             key={label}
@@ -465,22 +463,6 @@ function FilterModal({
           <p className="px-2 py-3 text-center text-xs text-muted-foreground">אין נתונים</p>
         )}
       </div>
-
-      {/* footer */}
-      <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
-        <button
-          onClick={onClose}
-          className="rounded-md border border-border px-4 py-1.5 text-sm hover:bg-surface-2"
-        >
-          ביטול
-        </button>
-        <button
-          onClick={onOk}
-          className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground"
-        >
-          אישור
-        </button>
-      </div>
     </div>
   )
 }
@@ -503,10 +485,8 @@ export default function ExpensesPage() {
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [filterOpen, setFilterOpen] = useState(false)
-  // null = "show all" (no filter applied yet); Set = explicit checked labels
+  // null = all shown; Set = only checked labels shown
   const [checkedNotesLabels, setCheckedNotesLabels] = useState<Set<NotesLabel> | null>(null)
-  // staged state while modal is open
-  const [stagedLabels, setStagedLabels] = useState<Set<NotesLabel> | null>(null)
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
 
   const userId = user?.id
@@ -585,8 +565,7 @@ export default function ExpensesPage() {
     return { availableNotesLabels: available, notesCounts: counts }
   }, [transactions])
 
-  // The set currently displayed in the modal (staged) or null = all
-  const effectiveChecked = stagedLabels ?? checkedNotesLabels ?? new Set(availableNotesLabels)
+  const effectiveChecked = checkedNotesLabels ?? new Set(availableNotesLabels)
 
   // Summary stats
   const stats = useMemo(() => {
@@ -635,7 +614,6 @@ export default function ExpensesPage() {
     setMinAmount('')
     setMaxAmount('')
     setCheckedNotesLabels(null)
-    setStagedLabels(null)
     setShowDuplicatesOnly(false)
   }
 
@@ -706,10 +684,7 @@ export default function ExpensesPage() {
         {/* Filter modal trigger */}
         <div className="relative">
           <button
-            onClick={() => {
-              setStagedLabels(checkedNotesLabels ?? new Set(availableNotesLabels))
-              setFilterOpen(v => !v)
-            }}
+            onClick={() => setFilterOpen(v => !v)}
             className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors ${
               filterActive
                 ? 'border-primary bg-primary/10 text-primary'
@@ -729,19 +704,11 @@ export default function ExpensesPage() {
                 const next = new Set(effectiveChecked)
                 if (next.has(label)) next.delete(label)
                 else next.add(label)
-                setStagedLabels(next)
+                setCheckedNotesLabels(next)
               }}
-              onSelectAll={() => setStagedLabels(new Set(availableNotesLabels))}
-              onClear={() => setStagedLabels(new Set())}
-              onClose={() => {
-                setStagedLabels(null)
-                setFilterOpen(false)
-              }}
-              onOk={() => {
-                setCheckedNotesLabels(stagedLabels ?? new Set(availableNotesLabels))
-                setStagedLabels(null)
-                setFilterOpen(false)
-              }}
+              onSelectAll={() => setCheckedNotesLabels(new Set(availableNotesLabels))}
+              onClear={() => setCheckedNotesLabels(new Set())}
+              onClose={() => setFilterOpen(false)}
             />
           )}
         </div>
