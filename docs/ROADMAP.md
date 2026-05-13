@@ -165,8 +165,6 @@
 
 ### 7d — Expenses Page
 
-- [~] Transaction review: mark reviewed (green check) / flag for double-check (yellow flag), bulk-select + bulk-mark, filter by review status in filter modal
-
 - [x] `GET /transactions` pagination + filtering by category, date range, min/max amount
 - [x] Expenses page (`/dashboard/expenses`): full transaction list with search, filter, sort
 - [x] Transaction detail / edit category inline
@@ -174,6 +172,7 @@
 - [x] Within-file duplicate detection: rows with same date+amount+description in one file imported as `WITHIN_FILE_DUPLICATE`; expenses page highlights them orange + filter button; import report explains how many were flagged
 - [x] Import and store הערות (notes) column from MAX and CAL files; display as subtitle in expenses list
 - [x] User-authored notes on transactions: `transaction_notes` table, POST/GET/PATCH/DELETE API, inline panel in expenses page (add, edit, delete with timestamps)
+- [x] Transaction review: mark reviewed (green check) / flag for re-check (red flag), bulk-select + bulk-mark, filter by review status in filter modal; separate `review_status` column independent of import-pipeline `status`
 - [~] Fix CAL CSV parser: real exports use `YYYY-MM-DD HH:MM:SS` dates and raw numeric amounts (no ₪ prefix)
 
 ### 7e — Safe-to-Spend
