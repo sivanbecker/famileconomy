@@ -12,6 +12,7 @@ function makeTx(overrides: Partial<Transaction> = {}): Transaction {
     category: 'מזון',
     cardLastFour: '5432',
     status: 'CLEARED',
+    reviewStatus: null,
     installmentNum: null,
     installmentOf: null,
     notes: null,
