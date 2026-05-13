@@ -215,7 +215,7 @@ describe('ImportService', () => {
         provider: 'MAX',
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [], skippedRows: [] })
     })
 
     it('returns inserted=1, duplicates=0 for a single new Cal transaction', async () => {
@@ -225,7 +225,7 @@ describe('ImportService', () => {
         provider: 'CAL',
         userId: USER_ID,
       })
-      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [], skippedRows: [] })
     })
 
     it('creates an ImportBatch record', async () => {
@@ -350,7 +350,10 @@ describe('ImportService', () => {
     })
 
     it('inserts a DUPLICATE transaction (not skips) when dedupe_hash already exists', async () => {
-      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({ id: EXISTING_TX_ID } as never)
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({
+        id: EXISTING_TX_ID,
+        importBatch: { filename: 'previous.csv' },
+      } as never)
 
       const result = await service.importCsv({
         csv: MAX_SINGLE_ROW,
@@ -359,7 +362,10 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result).toEqual({ inserted: 0, duplicates: 1, errors: [] })
+      expect(result.inserted).toBe(0)
+      expect(result.duplicates).toBe(1)
+      expect(result.errors).toEqual([])
+      expect(result.skippedRows).toHaveLength(1)
       expect(prisma.transaction.create).toHaveBeenCalledOnce()
     })
 
@@ -406,7 +412,45 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [] })
+      expect(result).toEqual({ inserted: 1, duplicates: 0, errors: [], skippedRows: [] })
+    })
+
+    it('includes a skippedRows list in the response', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({
+        id: EXISTING_TX_ID,
+        importBatch: { filename: 'previous.csv' },
+      } as never)
+
+      const result = await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.skippedRows).toHaveLength(1)
+      expect(result.skippedRows[0]).toMatchObject({
+        date: '2026-04-09',
+        amountAgorot: 1700,
+        description: 'מאפיית בראשית',
+        originalImportedFrom: 'previous.csv',
+      })
+    })
+
+    it('records originalImportedFrom as null when the original has no importBatch', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue({
+        id: EXISTING_TX_ID,
+        importBatch: null,
+      } as never)
+
+      const result = await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.skippedRows[0]?.originalImportedFrom).toBeNull()
     })
 
     it('throws FILE_ALREADY_IMPORTED when the same file was already imported', async () => {
@@ -539,7 +583,9 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result).toEqual({ inserted: 0, duplicates: 1, errors: [] })
+      expect(result.inserted).toBe(0)
+      expect(result.duplicates).toBe(1)
+      expect(result.errors).toEqual([])
     })
   })
 

@@ -125,6 +125,7 @@
 - [x] `postinstall` hook runs `prisma generate` so CI always has up-to-date enum types
 - [x] XLSX support: parsers for MAX and CAL XLSX files with ExcelJS (replaces xlsx due to CVE concerns)
 - [x] Import API endpoint: `POST /import/xlsx` — returns `{ inserted, duplicates, errors }`
+- [x] Duplicate report: import response includes `skippedRows` list (date, amount, description, source batch filename); modal stays open on duplicates and shows collapsible per-row breakdown
 - [-] BullMQ worker: `csv-import` queue with OTel spans (deferred: sync import sufficient for MVP; easy to add async path later — revisit Phase 9/10)
 - [-] Cloudflare R2 integration for ephemeral CSV storage (deferred: not needed without async worker — revisit Phase 9/10)
 
