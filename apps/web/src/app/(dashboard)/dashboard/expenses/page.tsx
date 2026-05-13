@@ -1,6 +1,6 @@
 'use client'
 
-import { type Dispatch, type SetStateAction, useMemo, useState, useRef, useEffect } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import {
   Search,
   X,
@@ -15,6 +15,7 @@ import {
   Trash2,
   Pencil,
   Check,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { categoryBreakdown } from '@famileconomy/utils'
@@ -372,12 +373,116 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
   )
 }
 
-// ─── Chip state ───────────────────────────────────────────────────────────────
+// ─── Filter modal ─────────────────────────────────────────────────────────────
 
-type ChipState = 'off' | 'highlight' | 'exclusive'
+export type NotesLabel = 'הוראת קבע' | 'תשלומים' | 'אחר'
 
-function cycleChip(set: Dispatch<SetStateAction<ChipState>>) {
-  set(s => (s === 'off' ? 'highlight' : s === 'highlight' ? 'exclusive' : 'off'))
+function classifyNotes(tx: Transaction): NotesLabel {
+  if (tx.notes?.includes('הוראת קבע')) return 'הוראת קבע'
+  if (tx.installmentNum !== null) return 'תשלומים'
+  return 'אחר'
+}
+
+interface FilterModalProps {
+  available: NotesLabel[]
+  checked: Set<NotesLabel>
+  counts: Record<NotesLabel, number>
+  onToggle: (label: NotesLabel) => void
+  onSelectAll: () => void
+  onClear: () => void
+  onClose: () => void
+  onOk: () => void
+}
+
+function FilterModal({
+  available,
+  checked,
+  counts,
+  onToggle,
+  onSelectAll,
+  onClear,
+  onClose,
+  onOk,
+}: FilterModalProps) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="פילטר הערות"
+      className="absolute start-0 top-10 z-50 w-64 rounded-lg border border-border bg-surface shadow-lg"
+    >
+      {/* header */}
+      <div className="border-b border-border px-4 py-3">
+        <p className="text-sm font-semibold">סינון לפי הערות</p>
+      </div>
+
+      {/* select all / clear */}
+      <div className="flex gap-3 border-b border-border px-4 py-2 text-xs">
+        <button onClick={onSelectAll} className="text-primary hover:underline">
+          בחר הכל ({available.length})
+        </button>
+        <span className="text-border">|</span>
+        <button onClick={onClear} className="text-primary hover:underline">
+          נקה
+        </button>
+        <span className="ms-auto text-muted-foreground">מציג {checked.size}</span>
+      </div>
+
+      {/* checklist */}
+      <div className="max-h-56 overflow-y-auto px-2 py-2">
+        {available.map(label => (
+          <label
+            key={label}
+            className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-surface-2"
+          >
+            <input
+              type="checkbox"
+              checked={checked.has(label)}
+              onChange={() => onToggle(label)}
+              className="h-4 w-4 rounded accent-primary"
+            />
+            <span className="flex-1">{label}</span>
+            <span className="tabular-nums text-xs text-muted-foreground">
+              {label === 'הוראת קבע'
+                ? counts['הוראת קבע']
+                : label === 'תשלומים'
+                  ? counts['תשלומים']
+                  : counts['אחר']}
+            </span>
+          </label>
+        ))}
+        {available.length === 0 && (
+          <p className="px-2 py-3 text-center text-xs text-muted-foreground">אין נתונים</p>
+        )}
+      </div>
+
+      {/* footer */}
+      <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+        <button
+          onClick={onClose}
+          className="rounded-md border border-border px-4 py-1.5 text-sm hover:bg-surface-2"
+        >
+          ביטול
+        </button>
+        <button
+          onClick={onOk}
+          className="rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground"
+        >
+          אישור
+        </button>
+      </div>
+    </div>
+  )
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
@@ -397,9 +502,12 @@ export default function ExpensesPage() {
   const [maxAmount, setMaxAmount] = useState('')
   const [sortBy, setSortBy] = useState<SortField>('date')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const [filterOpen, setFilterOpen] = useState(false)
+  // null = "show all" (no filter applied yet); Set = explicit checked labels
+  const [checkedNotesLabels, setCheckedNotesLabels] = useState<Set<NotesLabel> | null>(null)
+  // staged state while modal is open
+  const [stagedLabels, setStagedLabels] = useState<Set<NotesLabel> | null>(null)
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
-  const [standingOrdersChip, setStandingOrdersChip] = useState<ChipState>('off')
-  const [installmentsChip, setInstallmentsChip] = useState<ChipState>('off')
 
   const userId = user?.id
 
@@ -457,15 +565,28 @@ export default function ExpensesPage() {
     return ids
   }, [transactions])
 
-  // Counts for notes-based filter chips
-  const standingOrderCount = useMemo(
-    () => transactions.filter((tx: Transaction) => tx.notes?.includes('הוראת קבע')).length,
-    [transactions]
-  )
-  const installmentCount = useMemo(
-    () => transactions.filter((tx: Transaction) => tx.installmentNum !== null).length,
-    [transactions]
-  )
+  // Notes labels available in current month + counts
+  const { availableNotesLabels, notesCounts } = useMemo(() => {
+    const standingOrders = transactions.filter(
+      (tx: Transaction) => classifyNotes(tx) === 'הוראת קבע'
+    ).length
+    const installments = transactions.filter(
+      (tx: Transaction) => classifyNotes(tx) === 'תשלומים'
+    ).length
+    const other = transactions.filter((tx: Transaction) => classifyNotes(tx) === 'אחר').length
+    const counts: Record<NotesLabel, number> = {
+      'הוראת קבע': standingOrders,
+      תשלומים: installments,
+      אחר: other,
+    }
+    const available = (['הוראת קבע', 'תשלומים', 'אחר'] as NotesLabel[]).filter(l =>
+      l === 'הוראת קבע' ? standingOrders > 0 : l === 'תשלומים' ? installments > 0 : other > 0
+    )
+    return { availableNotesLabels: available, notesCounts: counts }
+  }, [transactions])
+
+  // The set currently displayed in the modal (staged) or null = all
+  const effectiveChecked = stagedLabels ?? checkedNotesLabels ?? new Set(availableNotesLabels)
 
   // Summary stats
   const stats = useMemo(() => {
@@ -477,31 +598,14 @@ export default function ExpensesPage() {
     return { totalExpenses, anomalyCount, withinFileDupCount: suspectedDupIds.size }
   }, [transactions, categoryAverages, suspectedDupIds])
 
-  // Filtered + highlighted lists
+  // Filtered list
   const displayedTransactions = useMemo(() => {
     let result = transactions
+    if (checkedNotesLabels !== null)
+      result = result.filter((tx: Transaction) => checkedNotesLabels.has(classifyNotes(tx)))
     if (showDuplicatesOnly) result = result.filter((tx: Transaction) => suspectedDupIds.has(tx.id))
-    if (standingOrdersChip === 'exclusive')
-      result = result.filter((tx: Transaction) => tx.notes?.includes('הוראת קבע'))
-    if (installmentsChip === 'exclusive')
-      result = result.filter((tx: Transaction) => tx.installmentNum !== null)
     return result
-  }, [transactions, showDuplicatesOnly, standingOrdersChip, installmentsChip, suspectedDupIds])
-
-  const highlightedIds = useMemo(() => {
-    const ids = new Set<string>()
-    if (standingOrdersChip === 'highlight') {
-      for (const tx of transactions) {
-        if (tx.notes?.includes('הוראת קבע')) ids.add(tx.id)
-      }
-    }
-    if (installmentsChip === 'highlight') {
-      for (const tx of transactions) {
-        if (tx.installmentNum !== null) ids.add(tx.id)
-      }
-    }
-    return ids
-  }, [transactions, standingOrdersChip, installmentsChip])
+  }, [transactions, checkedNotesLabels, showDuplicatesOnly, suspectedDupIds])
 
   function handleSort(field: SortField) {
     if (sortBy === field) {
@@ -530,19 +634,16 @@ export default function ExpensesPage() {
     setCategoryFilter('')
     setMinAmount('')
     setMaxAmount('')
+    setCheckedNotesLabels(null)
+    setStagedLabels(null)
     setShowDuplicatesOnly(false)
-    setStandingOrdersChip('off')
-    setInstallmentsChip('off')
   }
 
-  const hasFilters =
-    search ||
-    categoryFilter ||
-    minAmount ||
-    maxAmount ||
-    showDuplicatesOnly ||
-    standingOrdersChip !== 'off' ||
-    installmentsChip !== 'off'
+  const notesFilterActive =
+    checkedNotesLabels !== null && availableNotesLabels.some(l => !checkedNotesLabels.has(l))
+  const filterActive = notesFilterActive || showDuplicatesOnly
+
+  const hasFilters = search || categoryFilter || minAmount || maxAmount || filterActive
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -602,6 +703,49 @@ export default function ExpensesPage() {
 
       {/* ── Filters ── */}
       <div className="flex flex-wrap items-end gap-3 rounded-lg bg-surface p-4 shadow-card-md">
+        {/* Filter modal trigger */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              setStagedLabels(checkedNotesLabels ?? new Set(availableNotesLabels))
+              setFilterOpen(v => !v)
+            }}
+            className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm transition-colors ${
+              filterActive
+                ? 'border-primary bg-primary/10 text-primary'
+                : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+            }`}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            פילטר
+            {filterActive && <span className="h-1.5 w-1.5 rounded-full bg-primary" />}
+          </button>
+          {filterOpen && (
+            <FilterModal
+              available={availableNotesLabels}
+              checked={effectiveChecked}
+              counts={notesCounts}
+              onToggle={label => {
+                const next = new Set(effectiveChecked)
+                if (next.has(label)) next.delete(label)
+                else next.add(label)
+                setStagedLabels(next)
+              }}
+              onSelectAll={() => setStagedLabels(new Set(availableNotesLabels))}
+              onClear={() => setStagedLabels(new Set())}
+              onClose={() => {
+                setStagedLabels(null)
+                setFilterOpen(false)
+              }}
+              onOk={() => {
+                setCheckedNotesLabels(stagedLabels ?? new Set(availableNotesLabels))
+                setStagedLabels(null)
+                setFilterOpen(false)
+              }}
+            />
+          )}
+        </div>
+
         {/* Search */}
         <div className="relative min-w-48 flex-1">
           <Search className="absolute start-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
@@ -646,58 +790,6 @@ export default function ExpensesPage() {
             className="w-full rounded-md border border-border bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-primary sm:w-24"
           />
         </div>
-
-        {/* Notes-based filter chips — off → highlight → exclusive → off */}
-        {standingOrderCount > 0 && (
-          <button
-            onClick={() => cycleChip(setStandingOrdersChip)}
-            title={
-              standingOrdersChip === 'off'
-                ? 'לחץ להדגשת הוראות קבע'
-                : standingOrdersChip === 'highlight'
-                  ? 'לחץ להצגת הוראות קבע בלבד'
-                  : 'לחץ לביטול הסינון'
-            }
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              standingOrdersChip === 'exclusive'
-                ? 'border-primary bg-primary text-primary-foreground'
-                : standingOrdersChip === 'highlight'
-                  ? 'border-primary bg-primary/15 text-primary'
-                  : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
-            }`}
-          >
-            {standingOrdersChip === 'exclusive'
-              ? '▣'
-              : standingOrdersChip === 'highlight'
-                ? '●'
-                : '○'}
-            הוראת קבע
-            <span className="tabular-nums opacity-70">{standingOrderCount}</span>
-          </button>
-        )}
-        {installmentCount > 0 && (
-          <button
-            onClick={() => cycleChip(setInstallmentsChip)}
-            title={
-              installmentsChip === 'off'
-                ? 'לחץ להדגשת תשלומים'
-                : installmentsChip === 'highlight'
-                  ? 'לחץ להצגת תשלומים בלבד'
-                  : 'לחץ לביטול הסינון'
-            }
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              installmentsChip === 'exclusive'
-                ? 'border-primary bg-primary text-primary-foreground'
-                : installmentsChip === 'highlight'
-                  ? 'border-primary bg-primary/15 text-primary'
-                  : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
-            }`}
-          >
-            {installmentsChip === 'exclusive' ? '▣' : installmentsChip === 'highlight' ? '●' : '○'}
-            תשלומים
-            <span className="tabular-nums opacity-70">{installmentCount}</span>
-          </button>
-        )}
 
         {/* Clear */}
         {hasFilters && (
@@ -786,17 +878,12 @@ export default function ExpensesPage() {
                 displayedTransactions.map(tx => {
                   const anomaly = isAnomaly(tx, categoryAverages)
                   const isSuspectedDup = suspectedDupIds.has(tx.id)
-                  const isHighlighted = highlightedIds.has(tx.id)
                   const isCredit = tx.amountAgorot < 0
                   return (
                     <tr
                       key={tx.id}
                       className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
-                        isHighlighted
-                          ? 'border-s-2 border-s-primary bg-primary/5'
-                          : isSuspectedDup || anomaly
-                            ? 'bg-warning/5'
-                            : ''
+                        isSuspectedDup || anomaly ? 'bg-warning/5' : ''
                       }`}
                     >
                       <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
