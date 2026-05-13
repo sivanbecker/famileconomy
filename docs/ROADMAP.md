@@ -169,6 +169,7 @@
 - [x] Expenses page (`/dashboard/expenses`): full transaction list with search, filter, sort
 - [x] Transaction detail / edit category inline
 - [x] Anomaly highlighting (transactions > 2× category average)
+- [x] Within-file duplicate detection: rows with same date+amount+description in one file imported as `WITHIN_FILE_DUPLICATE`; expenses page highlights them orange + filter button; import report explains how many were flagged
 
 ### 7e — Safe-to-Spend
 
