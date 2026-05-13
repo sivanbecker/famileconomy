@@ -118,6 +118,7 @@ model Transaction {
   account            Account        @relation(fields: [accountId], references: [id], onDelete: Cascade)
   importBatch        ImportBatch?   @relation(fields: [importBatchId], references: [id])
   recurringMatch     RecurringMatch?
+  userNotes          TransactionNote[]
   originalTransaction Transaction?  @relation("DuplicateOf", fields: [duplicateOf], references: [id], onDelete: SetNull)
   duplicates         Transaction[]  @relation("DuplicateOf")
 
@@ -136,6 +137,20 @@ model ImportBatch {
 
   @@unique([accountId, fileHash])
   @@map("import_batches")
+}
+
+// ─── Transaction Notes ────────────────────────────────────────────────────────
+
+model TransactionNote {
+  id            String      @id @default(uuid())
+  transactionId String      @map("transaction_id")
+  body          String
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+
+  @@map("transaction_notes")
 }
 
 // ─── Recurring ────────────────────────────────────────────────────────────────

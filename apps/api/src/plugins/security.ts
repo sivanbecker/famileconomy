@@ -10,6 +10,7 @@ export async function registerSecurityPlugins(app: FastifyInstance): Promise<voi
   await app.register(cors, {
     origin: process.env['ALLOWED_ORIGINS']?.split(',') ?? ['http://localhost:3000'],
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   })
 
   await app.register(cookie)

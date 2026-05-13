@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import {
   Search,
   X,
@@ -9,6 +9,11 @@ import {
   ChevronsUpDown,
   AlertTriangle,
   Copy,
+  MessageSquare,
+  Plus,
+  Trash2,
+  Pencil,
+  Check,
 } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { categoryBreakdown } from '@famileconomy/utils'
@@ -17,6 +22,13 @@ import { MonthNavigator } from '../../../../components/month-navigator'
 import { useAuth } from '../../../../hooks/use-auth'
 import { useAccountStore } from '../../../../store/account'
 import { useExpenses, useUpdateCategory } from '../../../../hooks/use-expenses'
+import {
+  useTransactionNotes,
+  useAddNote,
+  useUpdateNote,
+  useDeleteNote,
+} from '../../../../hooks/use-transaction-notes'
+import type { TransactionNote } from '../../../../hooks/use-transaction-notes'
 import type { SortField, SortDir, ExpenseFilters } from '../../../../hooks/use-expenses'
 import type { Transaction } from '../../../../hooks/use-transactions'
 
@@ -140,6 +152,221 @@ function CategoryCell({ tx, userId, onMutate, isPending }: CategoryCellProps) {
     >
       {tx.category ?? 'ללא קטגוריה'}
     </button>
+  )
+}
+
+// ─── Notes dialog ─────────────────────────────────────────────────────────────
+
+interface NoteItemProps {
+  note: TransactionNote
+  userId: string
+  transactionId: string
+}
+
+function NoteItem({ note, userId, transactionId }: NoteItemProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(note.body)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const { mutate: updateNote, isPending: isUpdating } = useUpdateNote(transactionId)
+  const { mutate: deleteNote, isPending: isDeleting } = useDeleteNote(transactionId)
+
+  useEffect(() => {
+    if (editing) textareaRef.current?.focus()
+  }, [editing])
+
+  useEffect(() => {
+    if (!editing) setDraft(note.body)
+  }, [note.body, editing])
+
+  function handleSave() {
+    if (!draft.trim() || draft === note.body) {
+      setEditing(false)
+      setDraft(note.body)
+      return
+    }
+    updateNote(
+      { noteId: note.id, userId, body: draft.trim() },
+      { onSuccess: () => setEditing(false) }
+    )
+  }
+
+  const date = new Date(note.createdAt).toLocaleDateString('he-IL', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+
+  return (
+    <div className="group flex gap-2 rounded-md border border-border/50 bg-surface px-3 py-2">
+      <div className="min-w-0 flex-1">
+        {editing ? (
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            rows={2}
+            maxLength={2000}
+            className="w-full resize-none rounded border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault()
+                handleSave()
+              }
+              if (e.key === 'Escape') {
+                setEditing(false)
+                setDraft(note.body)
+              }
+            }}
+          />
+        ) : (
+          <p className="whitespace-pre-wrap text-xs">{note.body}</p>
+        )}
+        <p className="mt-0.5 text-[10px] text-muted-foreground">{date}</p>
+      </div>
+      <div className="flex shrink-0 items-start gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        {editing ? (
+          <button
+            onClick={handleSave}
+            disabled={isUpdating}
+            className="rounded p-0.5 text-primary hover:bg-primary/10"
+            title="שמור"
+          >
+            <Check className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+            title="ערוך הערה"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+          </button>
+        )}
+        <button
+          onClick={() => deleteNote({ noteId: note.id, userId })}
+          disabled={isDeleting}
+          className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+          title="מחק הערה"
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+        </button>
+      </div>
+    </div>
+  )
+}
+
+interface NotesButtonProps {
+  transactionId: string
+  userId: string
+}
+
+function NotesButton({ transactionId, userId }: NotesButtonProps) {
+  const [open, setOpen] = useState(false)
+  const [newBody, setNewBody] = useState('')
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const { data: notes = [], isLoading } = useTransactionNotes(
+    transactionId,
+    open ? userId : undefined
+  )
+  const { mutate: addNote, isPending: isAdding } = useAddNote(transactionId)
+
+  const hasNotes = notes.length > 0
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (
+        dialogRef.current &&
+        !dialogRef.current.contains(e.target as Node) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  function handleAdd() {
+    const trimmed = newBody.trim()
+    if (!trimmed) return
+    addNote(
+      { userId, body: trimmed },
+      {
+        onSuccess: () => {
+          setNewBody('')
+          setOpen(false)
+        },
+      }
+    )
+  }
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setOpen(v => !v)}
+        title={hasNotes ? `${notes.length} הערות` : 'הוסף הערה'}
+        className={`rounded p-0.5 transition-colors ${
+          hasNotes
+            ? 'text-primary'
+            : 'text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100'
+        }`}
+      >
+        <MessageSquare className="h-3.5 w-3.5" />
+      </button>
+
+      {open && (
+        <div
+          ref={dialogRef}
+          className="absolute end-0 top-6 z-50 w-72 rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
+          style={{ minWidth: '260px' }}
+        >
+          <p className="mb-2 text-xs font-semibold text-muted-foreground">הערות</p>
+
+          {isLoading && <div className="mb-2 h-3 w-24 animate-pulse rounded bg-surface" />}
+
+          {notes.length > 0 && (
+            <div className="mb-2 flex flex-col gap-1.5">
+              {notes.map(note => (
+                <NoteItem key={note.id} note={note} userId={userId} transactionId={transactionId} />
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            <textarea
+              autoFocus={notes.length === 0}
+              value={newBody}
+              onChange={e => setNewBody(e.target.value)}
+              placeholder="הוסף הערה..."
+              rows={2}
+              maxLength={2000}
+              className="min-h-[44px] flex-1 resize-none rounded border border-border bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+              onKeyDown={e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleAdd()
+                }
+                if (e.key === 'Escape') setOpen(false)
+              }}
+            />
+            <button
+              onClick={handleAdd}
+              disabled={isAdding || !newBody.trim()}
+              className="flex items-center gap-1 rounded bg-primary px-2 py-1.5 text-xs text-primary-foreground disabled:opacity-40"
+            >
+              <Plus className="h-3 w-3" />
+              הוסף
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -454,7 +681,7 @@ export default function ExpensesPage() {
                   return (
                     <tr
                       key={tx.id}
-                      className={`border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
+                      className={`group border-b border-border/50 transition-colors hover:bg-surface-2/50 ${
                         isSuspectedDup ? 'bg-orange-500/5' : anomaly ? 'bg-yellow-500/5' : ''
                       }`}
                     >
@@ -493,16 +720,19 @@ export default function ExpensesPage() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {user && (
-                          <CategoryCell
-                            tx={tx}
-                            userId={user.id}
-                            onMutate={(id, cat, uid) =>
-                              updateCategory({ transactionId: id, category: cat, userId: uid })
-                            }
-                            isPending={isCategoryPending}
-                          />
-                        )}
+                        <div className="flex items-center gap-1.5">
+                          {user && (
+                            <CategoryCell
+                              tx={tx}
+                              userId={user.id}
+                              onMutate={(id, cat, uid) =>
+                                updateCategory({ transactionId: id, category: cat, userId: uid })
+                              }
+                              isPending={isCategoryPending}
+                            />
+                          )}
+                          {user && <NotesButton transactionId={tx.id} userId={user.id} />}
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         {tx.cardLastFour && (
