@@ -12,10 +12,8 @@ import typography from '@tailwindcss/typography'
  *       export default { presets: [famileconomy], ... }
  *
  * All color values are defined twice:
- *   • hsl(var(--token)) — for web (reads CSS custom properties from globals.css)
+ *   • var(--token)      — for web (reads OKLCH CSS custom properties from globals.css)
  *   • raw hex fallback  — for NativeWind / React Native (no CSS variables at runtime)
- *
- * Swap via the `platform` helper at the bottom of this file if needed.
  */
 
 const config: Config = {
@@ -38,81 +36,84 @@ const config: Config = {
 
     extend: {
       // ── COLORS ──────────────────────────────────────────────
+      // All CSS var tokens are OKLCH in globals.css. The hsl() wrapper is
+      // removed — var() is used directly so the browser parses OKLCH values.
+      // NativeWind hex fallbacks are updated to match the new OKLCH palette.
       colors: {
         /* Semantic tokens — map to CSS vars in globals.css */
-        background: 'hsl(var(--background))',
-        foreground: 'hsl(var(--foreground))',
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
 
-        surface: 'hsl(var(--surface))',
-        'surface-2': 'hsl(var(--surface-2))',
+        surface: 'var(--surface)',
+        'surface-2': 'var(--surface-2)',
 
-        border: 'hsl(var(--border))',
-        'border-hover': 'hsl(var(--border-hover))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
+        border: 'var(--border)',
+        'border-hover': 'var(--border-hover)',
+        input: 'var(--input)',
+        ring: 'var(--ring)',
 
         muted: {
-          DEFAULT: 'hsl(var(--muted))',
-          foreground: 'hsl(var(--muted-foreground))',
+          DEFAULT: 'var(--muted)',
+          foreground: 'var(--muted-foreground)',
         },
         subtle: {
-          foreground: 'hsl(var(--subtle-foreground))',
+          foreground: 'var(--subtle-foreground)',
         },
 
         card: {
-          DEFAULT: 'hsl(var(--card))',
-          foreground: 'hsl(var(--card-foreground))',
+          DEFAULT: 'var(--card)',
+          foreground: 'var(--card-foreground)',
         },
         popover: {
-          DEFAULT: 'hsl(var(--popover))',
-          foreground: 'hsl(var(--popover-foreground))',
+          DEFAULT: 'var(--popover)',
+          foreground: 'var(--popover-foreground)',
         },
 
         /* Brand palette */
         primary: {
-          DEFAULT: 'hsl(var(--primary))',
-          foreground: 'hsl(var(--primary-foreground))',
-          dim: 'rgba(31,216,124,0.12)',
-          /* NativeWind / RN hex fallback */
-          hex: '#1fd87c',
+          DEFAULT: 'var(--primary)',
+          foreground: 'var(--primary-foreground)',
+          dim: 'oklch(62% 0.14 170 / 0.12)',
+          /* NativeWind / RN hex fallback — calm teal-green */
+          hex: '#2dba8a',
         },
         secondary: {
-          DEFAULT: 'hsl(var(--secondary))',
-          foreground: 'hsl(var(--secondary-foreground))',
-          dim: 'rgba(79,142,247,0.12)',
-          hex: '#4f8ef7',
+          DEFAULT: 'var(--secondary)',
+          foreground: 'var(--secondary-foreground)',
+          dim: 'oklch(65% 0.16 240 / 0.12)',
+          hex: '#5b8ef5',
         },
         destructive: {
-          DEFAULT: 'hsl(var(--destructive))',
-          foreground: 'hsl(var(--destructive-foreground))',
-          dim: 'rgba(255,92,106,0.12)',
-          hex: '#ff5c6a',
+          DEFAULT: 'var(--destructive)',
+          foreground: 'var(--destructive-foreground)',
+          dim: 'oklch(62% 0.22 25 / 0.12)',
+          hex: '#e8544a',
         },
         warning: {
-          DEFAULT: 'hsl(var(--warning))',
-          foreground: 'hsl(var(--warning-foreground))',
-          dim: 'rgba(245,166,35,0.12)',
-          hex: '#f5a623',
+          DEFAULT: 'var(--warning)',
+          foreground: 'var(--warning-foreground)',
+          dim: 'oklch(72% 0.18 65 / 0.12)',
+          hex: '#d48e1e',
         },
 
         /* Raw scale — use sparingly; prefer semantic tokens above */
         brand: {
-          green: '#1fd87c',
-          blue: '#4f8ef7',
-          coral: '#ff5c6a',
-          amber: '#f5a623',
-          violet: '#a78bfa',
-          orange: '#f97316',
-          rose: '#fb7185',
+          teal: '#2dba8a',
+          blue: '#5b8ef5',
+          coral: '#e8544a',
+          amber: '#d4a520',
+          violet: '#9b7fe8',
+          orange: '#e07530',
+          rose: '#e05575',
         },
 
         /* Chart palette (recharts / Chart.js class names) */
         chart: {
-          '1': 'hsl(var(--chart-1))',
-          '2': 'hsl(var(--chart-2))',
-          '3': 'hsl(var(--chart-3))',
-          '4': 'hsl(var(--chart-4))',
-          '5': 'hsl(var(--chart-5))',
+          '1': 'var(--chart-1)',
+          '2': 'var(--chart-2)',
+          '3': 'var(--chart-3)',
+          '4': 'var(--chart-4)',
+          '5': 'var(--chart-5)',
         },
       },
 
@@ -198,14 +199,14 @@ const config: Config = {
 
       // ── BOX SHADOW ──────────────────────────────────────────
       boxShadow: {
-        /* Glow shadows — match brand accents */
-        'glow-green': '0 4px 24px rgba(31,216,124,0.25)',
-        'glow-blue': '0 4px 24px rgba(79,142,247,0.20)',
-        'glow-coral': '0 4px 24px rgba(255,92,106,0.20)',
-        /* Card elevations */
-        'card-sm': '0 1px 4px rgba(0,0,0,0.35)',
-        'card-md': '0 4px 16px rgba(0,0,0,0.4)',
-        'card-lg': '0 8px 32px rgba(0,0,0,0.5)',
+        /* Glow shadows — match updated brand accents */
+        'glow-teal': '0 4px 24px oklch(62% 0.14 170 / 0.28)',
+        'glow-blue': '0 4px 24px oklch(65% 0.16 240 / 0.22)',
+        'glow-coral': '0 4px 24px oklch(62% 0.22 25 / 0.22)',
+        /* Card elevations — tinted toward brand hue */
+        'card-sm': '0 1px 4px oklch(4% 0.01 170 / 0.5)',
+        'card-md': '0 4px 16px oklch(4% 0.01 170 / 0.55)',
+        'card-lg': '0 8px 32px oklch(4% 0.01 170 / 0.65)',
       },
 
       // ── KEYFRAMES / ANIMATION ───────────────────────────────

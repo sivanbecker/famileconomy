@@ -3,68 +3,90 @@
 @tailwind utilities;
 
 @layer base {
+  /* ── Dark mode (default) ─────────────────────────────────────────────────── */
+  /* All tokens use OKLCH. Neutrals carry chroma 0.008 hued toward brand teal  */
+  /* (hue 170) for cohesion. Pure grays are banned.                            */
   :root {
-    --background: 10 12% 6%;
-    --surface: 215 25% 11%;
-    --surface-2: 220 33% 16%;
+    /* Surfaces — three elevation levels, tinted toward teal */
+    --background: oklch(9% 0.008 170);
+    --surface: oklch(14% 0.009 170);
+    --surface-2: oklch(19% 0.01 170);
 
-    --foreground: 220 40% 95%;
-    --card: 215 25% 11%;
-    --card-foreground: 220 40% 95%;
-    --popover: 215 25% 11%;
-    --popover-foreground: 220 40% 95%;
+    /* Text */
+    --foreground: oklch(94% 0.008 170);
+    --card: oklch(14% 0.009 170);
+    --card-foreground: oklch(94% 0.008 170);
+    --popover: oklch(14% 0.009 170);
+    --popover-foreground: oklch(94% 0.008 170);
 
-    --primary: 152 74% 48%;
-    --primary-foreground: 152 100% 10%;
-    --secondary: 217 91% 60%;
-    --secondary-foreground: 220 40% 95%;
-    --destructive: 356 100% 63%;
-    --destructive-foreground: 0 0% 100%;
-    --warning: 37 90% 55%;
-    --warning-foreground: 37 100% 10%;
+    /* Primary — calm teal-green. Trustworthy, not neon. */
+    --primary: oklch(62% 0.14 170);
+    --primary-foreground: oklch(16% 0.04 170);
 
-    --muted: 220 33% 16%;
-    --muted-foreground: 220 22% 54%;
-    --subtle-foreground: 220 29% 34%;
+    /* Secondary — soft periwinkle blue for info/highlight */
+    --secondary: oklch(65% 0.16 240);
+    --secondary-foreground: oklch(96% 0.005 240);
 
-    --border: 217 60% 63% / 0.1;
-    --border-hover: 217 60% 63% / 0.18;
-    --input: 217 60% 63% / 0.1;
-    --ring: 152 74% 48%;
+    /* Semantic */
+    --destructive: oklch(62% 0.22 25);
+    --destructive-foreground: oklch(98% 0.005 25);
+    --warning: oklch(72% 0.18 65);
+    --warning-foreground: oklch(20% 0.06 65);
 
-    --chart-1: 152 74% 48%;
-    --chart-2: 217 91% 60%;
-    --chart-3: 356 100% 63%;
-    --chart-4: 37 90% 55%;
-    --chart-5: 265 82% 74%;
+    /* Muted — mid-tones for secondary text and backgrounds */
+    --muted: oklch(19% 0.01 170);
+    --muted-foreground: oklch(55% 0.01 170);
+    --subtle-foreground: oklch(38% 0.008 170);
+
+    /* Borders — explicit, no alpha */
+    --border: oklch(26% 0.012 170);
+    --border-hover: oklch(34% 0.014 170);
+    --input: oklch(26% 0.012 170);
+    --ring: oklch(62% 0.14 170);
+
+    /* Chart palette — perceptually distinct, all OKLCH */
+    --chart-1: oklch(62% 0.14 170);
+    --chart-2: oklch(65% 0.16 240);
+    --chart-3: oklch(62% 0.22 25);
+    --chart-4: oklch(72% 0.18 65);
+    --chart-5: oklch(68% 0.16 305);
 
     --radius: 1rem;
     --radius-sm: 0.625rem;
     --radius-xs: 0.375rem;
   }
 
+  /* ── Light mode ──────────────────────────────────────────────────────────── */
   .light {
-    --background: 0 0% 98%;
-    --surface: 0 0% 100%;
-    --surface-2: 220 14% 96%;
-    --foreground: 220 40% 10%;
-    --card: 0 0% 100%;
-    --card-foreground: 220 40% 10%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 10%;
-    --primary: 152 68% 38%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 217 80% 50%;
-    --secondary-foreground: 0 0% 100%;
-    --destructive: 356 90% 55%;
-    --destructive-foreground: 0 0% 100%;
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 10% 44%;
-    --subtle-foreground: 220 10% 60%;
-    --border: 220 13% 88%;
-    --border-hover: 220 13% 74%;
-    --input: 220 13% 88%;
-    --ring: 152 68% 38%;
+    --background: oklch(97% 0.006 170);
+    --surface: oklch(100% 0.004 170);
+    --surface-2: oklch(95% 0.007 170);
+
+    --foreground: oklch(16% 0.01 170);
+    --card: oklch(100% 0.004 170);
+    --card-foreground: oklch(16% 0.01 170);
+    --popover: oklch(100% 0.004 170);
+    --popover-foreground: oklch(16% 0.01 170);
+
+    --primary: oklch(48% 0.13 170);
+    --primary-foreground: oklch(98% 0.004 170);
+
+    --secondary: oklch(50% 0.15 240);
+    --secondary-foreground: oklch(98% 0.004 240);
+
+    --destructive: oklch(52% 0.2 25);
+    --destructive-foreground: oklch(98% 0.004 25);
+    --warning: oklch(58% 0.17 65);
+    --warning-foreground: oklch(16% 0.06 65);
+
+    --muted: oklch(95% 0.007 170);
+    --muted-foreground: oklch(46% 0.01 170);
+    --subtle-foreground: oklch(60% 0.008 170);
+
+    --border: oklch(88% 0.01 170);
+    --border-hover: oklch(78% 0.012 170);
+    --input: oklch(88% 0.01 170);
+    --ring: oklch(48% 0.13 170);
   }
 
   * {
