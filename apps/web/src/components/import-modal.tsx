@@ -32,6 +32,7 @@ interface DuplicateRecord {
 interface ImportResult {
   inserted: number
   duplicates: number
+  withinFileDuplicates: number
   errors: string[]
   skippedRows: DuplicateRecord[]
 }
@@ -89,17 +90,18 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
       const res = await apiClient.post<ImportResult>(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      const { inserted, duplicates } = res.data
+      const { inserted, duplicates, withinFileDuplicates } = res.data
 
       const parts: string[] = [`יובאו ${inserted} עסקאות`]
       if (duplicates > 0) parts.push(`${duplicates} כפולות דולגו`)
+      if (withinFileDuplicates > 0) parts.push(`${withinFileDuplicates} חשודות ככפולות`)
       toast(parts.join(' · '), 'success')
 
       await queryClient.invalidateQueries({ queryKey: ['transactions'] })
       await queryClient.invalidateQueries({ queryKey: ['accounts', user?.id ?? userId] })
 
-      // If there are duplicates, show results panel; otherwise close modal
-      if (duplicates > 0) {
+      // Show results panel if there's anything to report
+      if (duplicates > 0 || withinFileDuplicates > 0) {
         setImportResult(res.data)
       } else {
         handleClose()
@@ -140,13 +142,15 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                   <p className="text-sm">
                     יובאו {importResult.inserted} עסקאות
                     {importResult.duplicates > 0 && ` · ${importResult.duplicates} כפולות דולגו`}
+                    {importResult.withinFileDuplicates > 0 &&
+                      ` · ${importResult.withinFileDuplicates} חשודות ככפולות בתוך הקובץ`}
                   </p>
                 </div>
 
                 {importResult.skippedRows.length > 0 && (
                   <details className="rounded-md border border-border">
                     <summary className="cursor-pointer px-3 py-2 text-sm font-medium hover:bg-muted/50">
-                      {importResult.duplicates} כפולות — לחץ לפירוט
+                      {importResult.duplicates} כפולות שדולגו — לחץ לפירוט
                     </summary>
                     <ul className="divide-y divide-border text-sm">
                       {importResult.skippedRows.map((row, i) => (
@@ -164,6 +168,17 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                       ))}
                     </ul>
                   </details>
+                )}
+
+                {importResult.withinFileDuplicates > 0 && (
+                  <div className="rounded-md border border-orange-500/30 bg-orange-500/5 px-3 py-2.5 text-sm">
+                    <p className="font-medium text-orange-500">
+                      {importResult.withinFileDuplicates} עסקאות חשודות ככפולות בתוך הקובץ
+                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      עסקאות אלו יובאו ומסומנות בדף ההוצאות — בדוק אותן ואשר אם הן לגיטימיות.
+                    </p>
+                  </div>
                 )}
               </div>
 

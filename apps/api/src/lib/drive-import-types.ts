@@ -12,6 +12,7 @@ export interface DriveImportProgress {
   processedFiles: number
   inserted: number
   duplicates: number
+  withinFileDuplicates: number
   errors: string[]
 }
 

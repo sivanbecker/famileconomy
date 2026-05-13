@@ -6,6 +6,13 @@ import { summarizeMonth } from '@famileconomy/utils'
 import type { MonthSummary } from '@famileconomy/utils'
 import { ALL_ACCOUNTS } from '../store/account'
 
+export type TransactionStatus =
+  | 'CLEARED'
+  | 'PENDING'
+  | 'DUPLICATE'
+  | 'REVIEWED_OK'
+  | 'WITHIN_FILE_DUPLICATE'
+
 export interface Transaction {
   id: string
   transactionDate: string
@@ -13,7 +20,7 @@ export interface Transaction {
   amountAgorot: number
   category: string | null
   cardLastFour: string | null
-  status: string
+  status: TransactionStatus
   installmentNum: number | null
   installmentOf: number | null
 }

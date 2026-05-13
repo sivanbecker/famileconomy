@@ -145,7 +145,13 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
     const rows = await prisma.transaction.findMany({
       where: {
         ...accountIdFilter,
-        status: { in: [TransactionStatus.CLEARED, TransactionStatus.REVIEWED_OK] },
+        status: {
+          in: [
+            TransactionStatus.CLEARED,
+            TransactionStatus.REVIEWED_OK,
+            TransactionStatus.WITHIN_FILE_DUPLICATE,
+          ],
+        },
         OR: [
           { chargeDate: { gte: startDate, lt: endDate } },
           { chargeDate: null, transactionDate: { gte: startDate, lt: endDate } },
