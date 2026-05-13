@@ -12,10 +12,18 @@ import type { ParsedTransaction } from '../lib/parsers/types.js'
 
 export type Provider = 'MAX' | 'CAL'
 
+export interface DuplicateRecord {
+  date: string
+  amountAgorot: number
+  description: string
+  originalImportedFrom: string | null
+}
+
 export interface ImportResult {
   inserted: number
   duplicates: number
   errors: string[]
+  skippedRows: DuplicateRecord[]
 }
 
 export interface ImportCsvInput {
@@ -139,6 +147,7 @@ export class ImportService {
 
     let inserted = 0
     let duplicates = 0
+    const skippedRows: DuplicateRecord[] = []
 
     for (const cardLastFour of cardIdentifiers) {
       const accountId = await this.findOrCreateAccount(userId, 'MAX', cardLastFour)
@@ -151,9 +160,10 @@ export class ImportService {
       const result = await this.insertRows(rows, accountId, batch.id, userId)
       inserted += result.inserted
       duplicates += result.duplicates
+      skippedRows.push(...result.skippedRows)
     }
 
-    return { inserted, duplicates, errors: [] }
+    return { inserted, duplicates, errors: [], skippedRows }
   }
 
   // ─── CAL import ─────────────────────────────────────────────────────────────
@@ -176,7 +186,12 @@ export class ImportService {
     })
 
     const result = await this.insertRows(rows, accountId, batch.id, userId)
-    return { inserted: result.inserted, duplicates: result.duplicates, errors: [] }
+    return {
+      inserted: result.inserted,
+      duplicates: result.duplicates,
+      errors: [],
+      skippedRows: result.skippedRows,
+    }
   }
 
   // ─── MAX XLSX import ────────────────────────────────────────────────────────
@@ -194,6 +209,7 @@ export class ImportService {
 
       let inserted = 0
       let duplicates = 0
+      const skippedRows: DuplicateRecord[] = []
 
       for (const cardLastFour of cardIdentifiers) {
         const accountId = await this.findOrCreateAccount(userId, 'MAX', cardLastFour)
@@ -206,9 +222,10 @@ export class ImportService {
         const result = await this.insertRows(rows, accountId, batch.id, userId)
         inserted += result.inserted
         duplicates += result.duplicates
+        skippedRows.push(...result.skippedRows)
       }
 
-      return { inserted, duplicates, errors: [] }
+      return { inserted, duplicates, errors: [], skippedRows }
     } catch (err) {
       if (err instanceof ImportError) throw err
       if (err instanceof Error) {
@@ -240,7 +257,12 @@ export class ImportService {
       })
 
       const result = await this.insertRows(rows, accountId, batch.id, userId)
-      return { inserted: result.inserted, duplicates: result.duplicates, errors: [] }
+      return {
+        inserted: result.inserted,
+        duplicates: result.duplicates,
+        errors: [],
+        skippedRows: result.skippedRows,
+      }
     } catch (err) {
       if (err instanceof ImportError) throw err
       if (err instanceof Error) {
@@ -266,9 +288,10 @@ export class ImportService {
     accountId: string,
     importBatchId: string,
     userId: string
-  ): Promise<{ inserted: number; duplicates: number }> {
+  ): Promise<{ inserted: number; duplicates: number; skippedRows: DuplicateRecord[] }> {
     let inserted = 0
     let duplicates = 0
+    const skippedRows: DuplicateRecord[] = []
 
     for (const row of rows) {
       const dedupeHash = computeDedupeHash({
@@ -280,6 +303,10 @@ export class ImportService {
 
       const existing = await prisma.transaction.findFirst({
         where: { dedupeHash, importBatchId },
+        select: {
+          id: true,
+          importBatch: { select: { filename: true } },
+        },
       })
 
       const baseData = {
@@ -302,6 +329,12 @@ export class ImportService {
         await prisma.transaction.create({
           data: { ...baseData, status: TransactionStatus.DUPLICATE, duplicateOf: existing.id },
         })
+        skippedRows.push({
+          date: row.transactionDate.toISOString().slice(0, 10),
+          amountAgorot: row.amountAgorot,
+          description: row.description,
+          originalImportedFrom: existing.importBatch?.filename ?? null,
+        })
         duplicates++
       } else if (row.isPending) {
         await prisma.transaction.create({
@@ -318,7 +351,10 @@ export class ImportService {
             amountAgorot: Buffer.from(row.amountAgorot.toString(), 'utf-8'),
             status: TransactionStatus.PENDING,
           },
-          select: { id: true },
+          select: {
+            id: true,
+            importBatch: { select: { filename: true } },
+          },
         })
 
         if (pendingMatch) {
@@ -335,6 +371,12 @@ export class ImportService {
               status: TransactionStatus.DUPLICATE,
               duplicateOf: pendingMatch.id,
             },
+          })
+          skippedRows.push({
+            date: row.transactionDate.toISOString().slice(0, 10),
+            amountAgorot: row.amountAgorot,
+            description: row.description,
+            originalImportedFrom: pendingMatch.importBatch?.filename ?? null,
           })
           duplicates++
         } else {
@@ -360,6 +402,6 @@ export class ImportService {
       }
     }
 
-    return { inserted, duplicates }
+    return { inserted, duplicates, skippedRows }
   }
 }
