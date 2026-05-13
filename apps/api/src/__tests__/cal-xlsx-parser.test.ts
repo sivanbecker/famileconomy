@@ -13,19 +13,21 @@ async function makeCalXlsx(
   const workbook = new ExcelJS.Workbook()
   const worksheet = workbook.addWorksheet()
 
-  // Row 0: Card identifier (CAL format: "כרטיס האשראי המסתיים ב-9876")
-  worksheet.addRow([`כרטיס האשראי המסתיים ב-${cardLastFour}`])
+  // Row 1: Card identifier (CAL real-world format includes bank and account details)
+  worksheet.addRow([
+    `פירוט עסקאות לחשבון מזרחי-טפחות 123-123456 לכרטיס ויזה זהב עסקי המסתיים ב-${cardLastFour}`,
+  ])
 
-  // Row 1: Empty or spacing
+  // Row 2: Empty or spacing
   worksheet.addRow([])
 
-  // Row 2: Charge date (CAL format: "עסקאות לחיוב ב-DD/MM/YYYY")
+  // Row 3: Charge date (CAL format: "עסקאות לחיוב ב-DD/MM/YYYY")
   worksheet.addRow([`עסקאות לחיוב ב-${chargeDate}`])
 
-  // Row 3: Empty or spacing
+  // Row 4: Empty or spacing
   worksheet.addRow([])
 
-  // Row 4: Header row
+  // Row 5: Header row
   const headerRow = ['תאריך', 'תיאור העסקה', 'סכום עסקה', 'סכום חיוב', '', 'קטגוריה', 'הערות']
   worksheet.addRow(headerRow)
 

@@ -188,26 +188,35 @@ export class ImportService {
     fileHash: string
   }): Promise<ImportResult> {
     const { fileBuffer, filename, userId, fileHash } = opts
-    const cardIdentifiers = await extractMaxXlsxCardIdentifiers(fileBuffer)
-    const allRows = await parseMaxXlsx(fileBuffer)
+    try {
+      const cardIdentifiers = await extractMaxXlsxCardIdentifiers(fileBuffer)
+      const allRows = await parseMaxXlsx(fileBuffer)
 
-    let inserted = 0
-    let duplicates = 0
+      let inserted = 0
+      let duplicates = 0
 
-    for (const cardLastFour of cardIdentifiers) {
-      const accountId = await this.findOrCreateAccount(userId, 'MAX', cardLastFour)
-      const rows = allRows.filter(r => r.cardLastFour === cardLastFour)
+      for (const cardLastFour of cardIdentifiers) {
+        const accountId = await this.findOrCreateAccount(userId, 'MAX', cardLastFour)
+        const rows = allRows.filter(r => r.cardLastFour === cardLastFour)
 
-      const batch = await prisma.importBatch.create({
-        data: { accountId, filename, fileHash, rowCount: rows.length },
-      })
+        const batch = await prisma.importBatch.create({
+          data: { accountId, filename, fileHash, rowCount: rows.length },
+        })
 
-      const result = await this.insertRows(rows, accountId, batch.id, userId)
-      inserted += result.inserted
-      duplicates += result.duplicates
+        const result = await this.insertRows(rows, accountId, batch.id, userId)
+        inserted += result.inserted
+        duplicates += result.duplicates
+      }
+
+      return { inserted, duplicates, errors: [] }
+    } catch (err) {
+      if (err instanceof ImportError) throw err
+      if (err instanceof Error) {
+        if (err.message.includes('failed to load file')) throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('no worksheet found')) throw new ImportError('FORMAT_MISMATCH')
+      }
+      throw err
     }
-
-    return { inserted, duplicates, errors: [] }
   }
 
   // ─── CAL XLSX import ────────────────────────────────────────────────────────
@@ -219,18 +228,35 @@ export class ImportService {
     fileHash: string
   }): Promise<ImportResult> {
     const { fileBuffer, filename, userId, fileHash } = opts
-    const [cardLastFour] = await extractCalXlsxCardIdentifiers(fileBuffer)
-    if (!cardLastFour) throw new ImportError('CARD_NOT_FOUND')
+    try {
+      const [cardLastFour] = await extractCalXlsxCardIdentifiers(fileBuffer)
+      if (!cardLastFour) throw new ImportError('CARD_NOT_FOUND')
 
-    const accountId = await this.findOrCreateAccount(userId, 'CAL', cardLastFour)
-    const rows = await parseCalXlsx(fileBuffer)
+      const accountId = await this.findOrCreateAccount(userId, 'CAL', cardLastFour)
+      const rows = await parseCalXlsx(fileBuffer)
 
-    const batch = await prisma.importBatch.create({
-      data: { accountId, filename, fileHash, rowCount: rows.length },
-    })
+      const batch = await prisma.importBatch.create({
+        data: { accountId, filename, fileHash, rowCount: rows.length },
+      })
 
-    const result = await this.insertRows(rows, accountId, batch.id, userId)
-    return { inserted: result.inserted, duplicates: result.duplicates, errors: [] }
+      const result = await this.insertRows(rows, accountId, batch.id, userId)
+      return { inserted: result.inserted, duplicates: result.duplicates, errors: [] }
+    } catch (err) {
+      if (err instanceof ImportError) throw err
+      if (err instanceof Error) {
+        if (err.message.includes('failed to load file')) throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('card identifier not found'))
+          throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('charge date not found')) throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('header row not found')) throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('Card ID check FAILED')) throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('Charge date check FAILED'))
+          throw new ImportError('FORMAT_MISMATCH')
+        if (err.message.includes('Header row check FAILED'))
+          throw new ImportError('FORMAT_MISMATCH')
+      }
+      throw err
+    }
   }
 
   // ─── Row insertion ──────────────────────────────────────────────────────────

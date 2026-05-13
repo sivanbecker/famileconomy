@@ -190,7 +190,7 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
             <Input
               id="import-file"
               type="file"
-              accept={fileFormat === 'xlsx' ? '.xlsx' : '.csv'}
+              accept={fileFormat === 'xlsx' ? '.xlsx,.xlsm' : '.csv'}
               ref={fileRef}
               onChange={() => setInlineError(null)}
             />

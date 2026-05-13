@@ -15,6 +15,11 @@ const COL_NOTES = 6
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function parseDateDMYY(raw: unknown): Date | null {
+  // Handle Date objects from ExcelJS
+  if (raw instanceof Date) {
+    return isNaN(raw.getTime()) ? null : new Date(raw.getFullYear(), raw.getMonth(), raw.getDate())
+  }
+
   const str = String(raw ?? '').trim()
   if (!str) return null
   const match = /^(\d{1,2})\/(\d{1,2})\/(\d{2})$/.exec(str)
@@ -64,14 +69,49 @@ function parseCalAmount(raw: unknown): { agorot: number; currency: string } | nu
 
 // ─── Card identifier extraction ───────────────────────────────────────────────
 
-const CARD_SUFFIX_RE = /המסתיים ב-(\d{4})/
+const CARD_SUFFIX_RE = /המסתיים\s+ב-(\d{4})/
 
 export async function extractCalXlsxCardIdentifiers(buffer: Buffer): Promise<string[]> {
-  const workbook = new ExcelJS.Workbook()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await workbook.xlsx.load(buffer as any)
+  if (!Buffer.isBuffer(buffer)) {
+    throw new Error(`Cal XLSX: expected Buffer, got ${typeof buffer}`)
+  }
+  if (buffer.length < 4) {
+    throw new Error(`Cal XLSX: buffer too small (${buffer.length} bytes)`)
+  }
 
-  const worksheet = workbook.worksheets[0]
+  // Check for ZIP magic bytes
+  if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw new Error(
+      `Cal XLSX: not a valid ZIP/XLSX file (magic bytes: ${buffer[0]?.toString(16)} ${buffer[1]?.toString(16)})`
+    )
+  }
+
+  let workbook: ExcelJS.Workbook | undefined
+  try {
+    // Copy buffer to avoid mutation
+    const bufferCopy = Buffer.alloc(buffer.length)
+    buffer.copy(bufferCopy)
+
+    workbook = new ExcelJS.Workbook()
+    if (!workbook) throw new Error('Failed to create workbook')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(bufferCopy as any)
+
+    if (!workbook.worksheets) {
+      throw new Error('Workbook loaded but has no worksheets property')
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`Cal XLSX: failed to load file - ${msg}`)
+  }
+
+  const worksheets = workbook.worksheets
+  if (!worksheets || worksheets.length === 0) {
+    throw new Error('Cal XLSX: no worksheets found after load')
+  }
+
+  const worksheet = worksheets[0]
   if (!worksheet) throw new Error('Cal XLSX: no worksheet found')
 
   const firstRow = worksheet.getRow(1)
@@ -108,7 +148,9 @@ function findHeaderRowIndex(worksheet: ExcelJS.Worksheet): number {
   for (let i = 1; i <= Math.min(worksheet.rowCount, 20); i++) {
     const row = worksheet.getRow(i)
     const firstCell = String(row.getCell(1).value ?? '').trim()
-    if (firstCell.startsWith('תאריך')) {
+    // Handle newlines in cell content (split on newline and check first line)
+    const firstLine = firstCell.split('\n')[0] ?? ''
+    if (firstLine.startsWith('תאריך')) {
       return i - 1 // Return 0-based index
     }
   }
@@ -116,11 +158,46 @@ function findHeaderRowIndex(worksheet: ExcelJS.Worksheet): number {
 }
 
 export async function parseCalXlsx(buffer: Buffer): Promise<ParsedTransaction[]> {
-  const workbook = new ExcelJS.Workbook()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await workbook.xlsx.load(buffer as any)
+  if (!Buffer.isBuffer(buffer)) {
+    throw new Error(`Cal XLSX: expected Buffer, got ${typeof buffer}`)
+  }
+  if (buffer.length < 4) {
+    throw new Error(`Cal XLSX: buffer too small (${buffer.length} bytes)`)
+  }
 
-  const worksheet = workbook.worksheets[0]
+  // Check for ZIP magic bytes
+  if (buffer[0] !== 0x50 || buffer[1] !== 0x4b) {
+    throw new Error(
+      `Cal XLSX: not a valid ZIP/XLSX file (magic bytes: ${buffer[0]?.toString(16)} ${buffer[1]?.toString(16)})`
+    )
+  }
+
+  let workbook: ExcelJS.Workbook | undefined
+  try {
+    // Copy buffer to avoid mutation
+    const bufferCopy = Buffer.alloc(buffer.length)
+    buffer.copy(bufferCopy)
+
+    workbook = new ExcelJS.Workbook()
+    if (!workbook) throw new Error('Failed to create workbook')
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(bufferCopy as any)
+
+    if (!workbook.worksheets) {
+      throw new Error('Workbook loaded but has no worksheets property')
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    throw new Error(`Cal XLSX: failed to load file - ${msg}`)
+  }
+
+  const worksheets = workbook.worksheets
+  if (!worksheets || worksheets.length === 0) {
+    throw new Error('Cal XLSX: no worksheets found after load')
+  }
+
+  const worksheet = worksheets[0]
   if (!worksheet) throw new Error('Cal XLSX: no worksheet found')
 
   // Extract card from row 0
@@ -150,11 +227,21 @@ export async function parseCalXlsx(buffer: Buffer): Promise<ParsedTransaction[]>
     if (!txDate) continue
 
     const descriptionCell = row.getCell(COL_DESCRIPTION + 1).value
-    const description = String(descriptionCell ?? '').trim()
+    const description = String(descriptionCell ?? '')
+      .trim()
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
     const categoryCell = row.getCell(COL_CATEGORY + 1).value
-    const category = String(categoryCell ?? '').trim() || null
+    const category =
+      String(categoryCell ?? '')
+        .trim()
+        .replace(/\n/g, ' ')
+        .replace(/\s+/g, ' ') || null
     const notesCell = row.getCell(COL_NOTES + 1).value
-    const notes = String(notesCell ?? '').trim()
+    const notes = String(notesCell ?? '')
+      .trim()
+      .replace(/\n/g, ' ')
+      .replace(/\s+/g, ' ')
 
     const txAmountCell = row.getCell(COL_TX_AMOUNT + 1).value
     const txAmountParsed = parseCalAmount(txAmountCell)
