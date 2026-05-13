@@ -64,6 +64,7 @@ export interface Transaction {
   account?: Account;
   importBatch?: ImportBatch | null;
   recurringMatch?: RecurringMatch | null;
+  userNotes?: TransactionNote[];
   originalTransaction?: Transaction | null;
   duplicates?: Transaction[];
 }
@@ -76,6 +77,15 @@ export interface ImportBatch {
   rowCount: number;
   importedAt: Date;
   transactions?: Transaction[];
+}
+
+export interface TransactionNote {
+  id: string;
+  transactionId: string;
+  body: string;
+  createdAt: Date;
+  updatedAt: Date;
+  transaction?: Transaction;
 }
 
 export interface RecurringExpense {
