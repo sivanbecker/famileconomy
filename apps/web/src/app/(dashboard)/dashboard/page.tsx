@@ -58,7 +58,7 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6 p-6">
       {/* ── Top bar ── */}
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-lg font-bold">תמונת מצב חודשית</h1>
+        <h1 className="text-display-sm">תמונת מצב חודשית</h1>
         <div className="flex items-center gap-3">
           {user && <AccountSelector userId={user.id} />}
           <MonthNavigator year={year} month={month} onPrev={handlePrev} onNext={handleNext} />

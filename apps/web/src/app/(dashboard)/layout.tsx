@@ -244,7 +244,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[10px] font-medium transition-colors ${
+                className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-label-xs transition-colors ${
                   active ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >

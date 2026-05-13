@@ -44,7 +44,7 @@ export default function LoginPage() {
         className="flex w-full max-w-sm flex-col gap-4 p-8"
         noValidate
       >
-        <h1 className="text-2xl font-bold">התחברות</h1>
+        <h1 className="text-display-md">התחברות</h1>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="email">אימייל</label>

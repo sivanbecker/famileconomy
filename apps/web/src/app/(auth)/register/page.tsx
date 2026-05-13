@@ -47,7 +47,7 @@ export default function RegisterPage() {
         className="flex w-full max-w-sm flex-col gap-4 p-8"
         noValidate
       >
-        <h1 className="text-2xl font-bold">הרשמה</h1>
+        <h1 className="text-display-md">הרשמה</h1>
 
         <div className="flex flex-col gap-1">
           <label htmlFor="name">שם</label>

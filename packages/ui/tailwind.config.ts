@@ -132,7 +132,7 @@ const config: Config = {
         /* Body */
         'body-lg': ['1rem', { lineHeight: '1.6', fontWeight: '400' }] /* 16px */,
         'body-md': ['0.9375rem', { lineHeight: '1.6', fontWeight: '400' }] /* 15px */,
-        'body-sm': ['0.875rem', { lineHeight: '1.5', fontWeight: '400' }] /* 14px */,
+        'body-sm': ['0.875rem', { lineHeight: '1.6', fontWeight: '400' }] /* 14px */,
         'body-xs': ['0.8125rem', { lineHeight: '1.5', fontWeight: '500' }] /* 13px */,
         /* Label / caption */
         'label-md': ['0.75rem', { lineHeight: '1.4', fontWeight: '500' }] /* 12px */,

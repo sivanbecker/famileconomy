@@ -102,6 +102,7 @@
     font-family: 'Heebo', 'Segoe UI', system-ui, sans-serif;
     font-feature-settings: 'kern' 1;
     font-optical-sizing: auto;
+    font-kerning: normal;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
   }
@@ -110,6 +111,12 @@
   h2,
   h3 {
     text-wrap: balance;
+  }
+
+  /* Numeric data aligns on a tabular grid by default */
+  [data-numeric],
+  .tabular {
+    font-variant-numeric: tabular-nums;
   }
 
   :focus-visible {
