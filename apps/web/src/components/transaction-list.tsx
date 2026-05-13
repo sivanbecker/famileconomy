@@ -120,9 +120,7 @@ export function TransactionList({
 
   if (visible.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        אין עסקאות לחודש זה. ייבא קובץ CSV כדי להתחיל.
-      </p>
+      <p className="text-sm text-muted-foreground">אין עסקאות לחודש זה. ייבא קובץ כדי להתחיל.</p>
     )
   }
 

@@ -66,6 +66,7 @@ const config: Config = {
         'display-lg': ['2.25rem', { lineHeight: '1', fontWeight: '800' }],
         'display-md': ['1.75rem', { lineHeight: '1', fontWeight: '800' }],
         'display-sm': ['1.375rem', { lineHeight: '1.1', fontWeight: '700' }],
+        'label-xs': ['0.625rem', { lineHeight: '1.4', fontWeight: '500' }],
         'label-sm': ['0.6875rem', { lineHeight: '1.4', fontWeight: '600' }],
         'label-md': ['0.75rem', { lineHeight: '1.4', fontWeight: '500' }],
       },

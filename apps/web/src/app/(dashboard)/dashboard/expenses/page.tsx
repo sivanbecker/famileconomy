@@ -149,7 +149,7 @@ function CategoryCell({ tx, userId, onMutate, isPending }: CategoryCellProps) {
     <button
       className="rounded-full bg-surface-2 px-2 py-0.5 text-xs text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
       onClick={() => setEditing(true)}
-      title="לחץ לעריכת קטגוריה"
+      aria-label={`ערוך קטגוריה: ${tx.category ?? 'ללא קטגוריה'}`}
     >
       {tx.category ?? 'ללא קטגוריה'}
     </button>
@@ -222,7 +222,7 @@ function NoteItem({ note, userId, transactionId }: NoteItemProps) {
         ) : (
           <p className="whitespace-pre-wrap text-xs">{note.body}</p>
         )}
-        <p className="mt-0.5 text-[10px] text-muted-foreground">{date}</p>
+        <p className="mt-0.5 text-label-xs text-muted-foreground">{date}</p>
       </div>
       <div className="flex shrink-0 items-start gap-1 opacity-0 transition-opacity group-hover:opacity-100">
         {editing ? (
@@ -324,6 +324,8 @@ function NotesButton({ transactionId, userId }: NotesButtonProps) {
       {open && (
         <div
           ref={dialogRef}
+          role="dialog"
+          aria-label="הערות לעסקה"
           className="absolute end-0 top-6 z-50 w-72 rounded-lg border border-border bg-surface-2 p-3 shadow-lg"
           style={{ minWidth: '260px' }}
         >
