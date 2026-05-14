@@ -1,0 +1,9 @@
+[project]
+name = "family-runner"
+version = "0.1.0"
+description = "Desktop GUI for xlsx-rename and xlsx-to-csv scripts"
+requires-python = ">=3.12"
+dependencies = [
+    "flet[all]>=0.85.1",
+    "openpyxl>=3.1.5",
+]
