@@ -339,6 +339,7 @@ export class ImportService {
         transactionDate: row.transactionDate,
         amountAgorot: row.amountAgorot,
         description: row.description,
+        installmentNum: row.installmentNum,
       })
 
       const baseData = {

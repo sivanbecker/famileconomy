@@ -65,4 +65,26 @@ describe('computeDedupeHash', () => {
     const big = { ...base, amountAgorot: Number.MAX_SAFE_INTEGER }
     expect(() => computeDedupeHash(big)).not.toThrow()
   })
+
+  // ─── Installment hashing ────────────────────────────────────────────────────
+
+  it('two consecutive monthly installments of the same purchase produce DIFFERENT hashes', () => {
+    // CAL reports installments by original purchase date — so date, amount, and description
+    // are identical every month. Only installmentNum changes.
+    const installment13 = { ...base, installmentNum: 13 }
+    const installment14 = { ...base, installmentNum: 14 }
+    expect(computeDedupeHash(installment13)).not.toBe(computeDedupeHash(installment14))
+  })
+
+  it('non-installment row (installmentNum=null) differs from installment row 1/N', () => {
+    const plain = { ...base, installmentNum: null }
+    const first = { ...base, installmentNum: 1 }
+    expect(computeDedupeHash(plain)).not.toBe(computeDedupeHash(first))
+  })
+
+  it('same installment number on same date/amount/description → same hash (idempotent re-import)', () => {
+    const a = { ...base, installmentNum: 3 }
+    const b = { ...base, installmentNum: 3 }
+    expect(computeDedupeHash(a)).toBe(computeDedupeHash(b))
+  })
 })
