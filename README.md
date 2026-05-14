@@ -87,7 +87,17 @@ uv sync          # first time only
 uv run flet run main.py
 ```
 
-Select provider (MAX/CAL), pick an action tile, browse for a file or folder, and hit RUN.
+Select provider (MAX/CAL), pick an action tile, browse for a file or folder, and hit RUN. The file picker opens directly at the provider's Google Drive XLS folder.
+
+To run without a terminal, create `FamilyRunner.command` on your Desktop:
+
+```bash
+#!/bin/bash
+cd /Users/sbecker/work/Claude/projects/famileconomy/apps/desktop
+/Users/sbecker/.local/bin/uv run flet run main.py
+```
+
+Then `chmod +x ~/Desktop/FamilyRunner.command` and double-click it.
 
 ### Running Local Dev Server
 
