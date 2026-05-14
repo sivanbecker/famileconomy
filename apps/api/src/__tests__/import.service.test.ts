@@ -759,6 +759,161 @@ describe('ImportService', () => {
     })
   })
 
+  // ─── Cross-batch dedup (global scope) ────────────────────────────────────
+
+  describe('cross-batch deduplication', () => {
+    // A "new" file that shares rows with a previously imported file
+    const MAX_NEW_FILE_WITH_OLD_ROWS =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `05/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      // old row (already imported in a previous batch)
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      // new row (only in this file)
+      `12-04-2026,סופרמרקט שופרסל,מזון,5432,רגילה,120,₪,120,₪,10-05-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `137₪,,,,,,,,,,,,,,,`
+
+    // Installment scenario — same merchant/amount on different calendar dates
+    const MAX_INSTALLMENT_MONTH1 =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `05/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      `15-04-2026,יס פלאנט,שונות,5432,תשלומים,99,₪,99,₪,10-05-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `99₪,,,,,,,,,,,,,,,`
+
+    const MAX_INSTALLMENT_MONTH2 =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `06/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      // Same merchant and amount but a DIFFERENT transactionDate — not a duplicate
+      `15-05-2026,יס פלאנט,שונות,5432,תשלומים,99,₪,99,₪,10-06-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `99₪,,,,,,,,,,,,,,,`
+
+    const EXISTING_TX_ID = 'existing-tx-uuid'
+    const NEW_BATCH_ID = 'batch-2'
+
+    beforeEach(() => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.account.create).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({
+        ...MOCK_BATCH,
+        id: NEW_BATCH_ID,
+        filename: 'max-new.csv',
+      })
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('detects a duplicate from a PREVIOUS batch (different importBatchId)', async () => {
+      // The old row matches; the new row is genuinely new
+      vi.mocked(prisma.transaction.findFirst)
+        .mockResolvedValueOnce({
+          id: EXISTING_TX_ID,
+          importBatch: { filename: 'max-old.csv' },
+        } as never) // old row → duplicate
+        .mockResolvedValueOnce(null) // new row → no existing PENDING
+        .mockResolvedValueOnce(null) // new row → not a PENDING match
+
+      const result = await service.importCsv({
+        csv: MAX_NEW_FILE_WITH_OLD_ROWS,
+        filename: 'max-new.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.duplicates).toBe(1)
+      expect(result.inserted).toBe(1)
+      expect(result.skippedRows).toHaveLength(1)
+      expect(result.skippedRows[0]).toMatchObject({
+        date: '2026-04-09',
+        description: 'מאפיית בראשית',
+        originalImportedFrom: 'max-old.csv',
+      })
+    })
+
+    it('dedup query does NOT include importBatchId in the where clause', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max-new.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      // The dedup findFirst call must NOT filter by importBatchId
+      const dedupeCall = vi.mocked(prisma.transaction.findFirst).mock.calls.find(args => {
+        const where = args[0]?.where as Record<string, unknown> | undefined
+        return where !== undefined && 'dedupeHash' in where
+      })
+      expect(dedupeCall).toBeDefined()
+      const where = dedupeCall?.[0]?.where as Record<string, unknown> | undefined
+      expect(where).not.toHaveProperty('importBatchId')
+    })
+
+    it('dedup query excludes DUPLICATE and WITHIN_FILE_DUPLICATE rows', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max-new.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      const dedupeCall = vi.mocked(prisma.transaction.findFirst).mock.calls.find(args => {
+        const where = args[0]?.where as Record<string, unknown> | undefined
+        return where !== undefined && 'dedupeHash' in where
+      })
+      expect(dedupeCall).toBeDefined()
+      const where = dedupeCall?.[0]?.where as Record<string, unknown> | undefined
+      expect(where).toMatchObject({
+        status: { notIn: expect.arrayContaining(['DUPLICATE', 'WITHIN_FILE_DUPLICATE']) },
+      })
+    })
+
+    it('does NOT flag installments as duplicates when they fall on different dates', async () => {
+      // First import: month 1 installment
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+      const month1 = await service.importCsv({
+        csv: MAX_INSTALLMENT_MONTH1,
+        filename: 'max-may.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+      expect(month1.inserted).toBe(1)
+      expect(month1.duplicates).toBe(0)
+
+      vi.resetAllMocks()
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({ ...MOCK_BATCH, id: 'batch-june' })
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null) // different hash → no match
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+
+      // Second import: month 2 installment — different date, different hash → NOT a duplicate
+      const month2 = await service.importCsv({
+        csv: MAX_INSTALLMENT_MONTH2,
+        filename: 'max-june.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+      expect(month2.inserted).toBe(1)
+      expect(month2.duplicates).toBe(0)
+    })
+  })
+
   // ─── Error cases ───────────────────────────────────────────────────────────
 
   describe('error cases', () => {

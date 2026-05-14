@@ -364,7 +364,12 @@ export class ImportService {
           // Canonical was a cross-file duplicate — treat this row the same way.
           // Re-run the DB check to find the original for the duplicate_of FK.
           const existing = await prisma.transaction.findFirst({
-            where: { dedupeHash, importBatchId },
+            where: {
+              dedupeHash,
+              status: {
+                notIn: [TransactionStatus.DUPLICATE, TransactionStatus.WITHIN_FILE_DUPLICATE],
+              },
+            },
             select: { id: true, importBatch: { select: { filename: true } } },
           })
           await prisma.transaction.create({
@@ -396,7 +401,12 @@ export class ImportService {
       }
 
       const existing = await prisma.transaction.findFirst({
-        where: { dedupeHash, importBatchId },
+        where: {
+          dedupeHash,
+          status: {
+            notIn: [TransactionStatus.DUPLICATE, TransactionStatus.WITHIN_FILE_DUPLICATE],
+          },
+        },
         select: {
           id: true,
           importBatch: { select: { filename: true } },
