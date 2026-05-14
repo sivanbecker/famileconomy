@@ -520,79 +520,25 @@ describe('ImportService', () => {
       vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
     })
 
-    it('inserts a pending CAL row with status=PENDING', async () => {
+    it('silently skips pending rows — does not insert them', async () => {
       vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
 
-      await service.importCsv({
+      const result = await service.importCsv({
         csv: CAL_PENDING_ROW,
         filename: 'cal-may.csv',
         provider: 'CAL',
         userId: USER_ID,
       })
 
-      expect(prisma.transaction.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ status: 'PENDING' }),
-        })
-      )
+      expect(prisma.transaction.create).not.toHaveBeenCalled()
+      expect(result.inserted).toBe(0)
+      expect(result.duplicates).toBe(0)
+      expect(result.errors).toEqual([])
     })
 
-    it('promotes an existing PENDING row to CLEARED when the settled version arrives', async () => {
-      const PENDING_TX_ID = 'pending-tx-uuid'
-      // dedup hash check: no exact hash match (different chargeDate changes nothing in hash)
-      vi.mocked(prisma.transaction.findFirst)
-        // first call: dedupe hash lookup → no match (different billing month)
-        .mockResolvedValueOnce(null)
-        // second call: pending lookup → finds the existing PENDING row
-        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
-
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
-
-      await service.importCsv({
-        csv: CAL_CLEARED_ROW,
-        filename: 'cal-jun.csv',
-        provider: 'CAL',
-        userId: USER_ID,
-      })
-
-      expect(prisma.transaction.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: PENDING_TX_ID },
-          data: expect.objectContaining({ status: 'CLEARED' }),
-        })
-      )
-    })
-
-    it('marks the new cleared row as DUPLICATE of the promoted transaction', async () => {
-      const PENDING_TX_ID = 'pending-tx-uuid'
-      vi.mocked(prisma.transaction.findFirst)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
-
-      await service.importCsv({
-        csv: CAL_CLEARED_ROW,
-        filename: 'cal-jun.csv',
-        provider: 'CAL',
-        userId: USER_ID,
-      })
-
-      expect(prisma.transaction.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            status: 'DUPLICATE',
-            duplicateOf: PENDING_TX_ID,
-          }),
-        })
-      )
-    })
-
-    it('counts a pending promotion as inserted=0, duplicates=1', async () => {
-      const PENDING_TX_ID = 'pending-tx-uuid'
-      vi.mocked(prisma.transaction.findFirst)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
+    it('inserts the cleared version of a previously-pending row as a normal new transaction', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({ id: 'new-tx' } as never)
 
       const result = await service.importCsv({
         csv: CAL_CLEARED_ROW,
@@ -601,9 +547,13 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result.inserted).toBe(0)
-      expect(result.duplicates).toBe(1)
-      expect(result.errors).toEqual([])
+      expect(result.inserted).toBe(1)
+      expect(result.duplicates).toBe(0)
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ status: 'PENDING' }),
+        })
+      )
     })
   })
 
@@ -954,18 +904,17 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      // 20 rows total: 18 cleared + 2 pending
-      expect(result.inserted).toBe(20)
+      // 18 cleared rows inserted; 2 pending rows silently skipped
+      expect(result.inserted).toBe(18)
       expect(result.duplicates).toBe(0)
       expect(result.errors).toEqual([])
     })
 
-    it('second import: only the 3 new rows are inserted; the 20 overlapping rows are duplicates', async () => {
+    it('second import: only the 5 new/settled rows are inserted; the 18 overlapping cleared rows are duplicates', async () => {
       vi.mocked(prisma.importBatch.create).mockResolvedValue({
         ...MOCK_BATCH,
         id: 'batch-extended',
       })
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
 
       const EXISTING = {
         id: 'existing-tx',
@@ -973,27 +922,18 @@ describe('ImportService', () => {
       } as never
 
       // Extended file row order (newest first):
-      //   29/4, 28/4, 27/4   → 3 brand-new rows (1 dedup call each → null)
-      //   26/4 פרשמרקט       → was PENDING; dedup call → null, pending lookup → existing
-      //   26/4 בוטיק         → was PENDING; dedup call → null, pending lookup → existing
-      //   24/4..20/4/25      → 18 cleared overlapping rows (1 dedup call each → existing)
+      //   29/4, 28/4, 27/4       → 3 brand-new rows (dedup → null)
+      //   26/4 פרשמרקט (cleared) → was pending in original, now cleared → new insert (dedup → null)
+      //   26/4 בוטיק (cleared)   → same (dedup → null)
+      //   24/4..20/4/25          → 18 cleared overlapping rows (dedup → existing)
       vi.mocked(prisma.transaction.findFirst)
-        // row 1 new (29/4): no dedup match, no pending match
+        // 5 new/settled rows: no dedup match
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
-        // row 2 new (28/4): no dedup match, no pending match
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
-        // row 3 new (27/4): no dedup match, no pending match
         .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(null)
-        // row 4 (26/4 פרשמרקט, was pending): dedup → null, pending lookup → existing
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(EXISTING)
-        // row 5 (26/4 בוטיק, was pending): dedup → null, pending lookup → existing
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce(EXISTING)
-        // rows 6-23: 18 cleared overlapping rows, each matched immediately by dedup hash
+        // 18 overlapping cleared rows: each matched by dedup hash
         .mockResolvedValue(EXISTING)
 
       const result = await service.importCsv({
@@ -1003,10 +943,10 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result.inserted).toBe(3)
-      expect(result.duplicates).toBe(20)
+      expect(result.inserted).toBe(5)
+      expect(result.duplicates).toBe(18)
       expect(result.errors).toEqual([])
-      expect(result.skippedRows).toHaveLength(20)
+      expect(result.skippedRows).toHaveLength(18)
     })
 
     it('second import: skippedRows reference the original report filename', async () => {
@@ -1016,6 +956,8 @@ describe('ImportService', () => {
       })
 
       vi.mocked(prisma.transaction.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)

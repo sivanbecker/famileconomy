@@ -427,75 +427,33 @@ export class ImportService {
         })
         duplicates++
       } else if (row.isPending) {
+        // Pending rows ("עסקה בקליטה") are skipped — they have no confirmed charge
+        // date or amount yet. They will appear as normal cleared transactions in a
+        // later statement and be imported at that point.
+        continue
+      } else {
         const created = await prisma.transaction.create({
-          data: { ...baseData, status: TransactionStatus.PENDING },
+          data: baseData,
           select: { id: true },
         })
         canonicalIdByKey.set(key, created.id)
-        inserted++
-      } else {
-        // Check if this cleared row settles an existing PENDING transaction
-        // (same account + description + exact amount, previously in limbo)
-        const pendingMatch = await prisma.transaction.findFirst({
-          where: {
-            accountId,
-            description: Buffer.from(row.description, 'utf-8'),
-            amountAgorot: Buffer.from(row.amountAgorot.toString(), 'utf-8'),
-            status: TransactionStatus.PENDING,
-          },
-          select: {
-            id: true,
-            importBatch: { select: { filename: true } },
+
+        await prisma.auditLog.create({
+          data: {
+            userId,
+            action: 'INSERT',
+            tableName: 'transactions',
+            recordId: dedupeHash,
+            newValues: {
+              accountId,
+              transactionDate: row.transactionDate,
+              description: '[REDACTED]',
+              amountAgorot: '[REDACTED]',
+            },
           },
         })
 
-        if (pendingMatch) {
-          canonicalIdByKey.set(key, null)
-          await prisma.transaction.update({
-            where: { id: pendingMatch.id },
-            data: {
-              status: TransactionStatus.CLEARED,
-              ...(row.chargeDate !== null && { chargeDate: row.chargeDate }),
-            },
-          })
-          await prisma.transaction.create({
-            data: {
-              ...baseData,
-              status: TransactionStatus.DUPLICATE,
-              duplicateOf: pendingMatch.id,
-            },
-          })
-          skippedRows.push({
-            date: row.transactionDate.toISOString().slice(0, 10),
-            amountAgorot: row.amountAgorot,
-            description: row.description,
-            originalImportedFrom: pendingMatch.importBatch?.filename ?? null,
-          })
-          duplicates++
-        } else {
-          const created = await prisma.transaction.create({
-            data: baseData,
-            select: { id: true },
-          })
-          canonicalIdByKey.set(key, created.id)
-
-          await prisma.auditLog.create({
-            data: {
-              userId,
-              action: 'INSERT',
-              tableName: 'transactions',
-              recordId: dedupeHash,
-              newValues: {
-                accountId,
-                transactionDate: row.transactionDate,
-                description: '[REDACTED]',
-                amountAgorot: '[REDACTED]',
-              },
-            },
-          })
-
-          inserted++
-        }
+        inserted++
       }
     }
 
