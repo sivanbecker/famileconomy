@@ -77,6 +77,18 @@ uv run scripts/xlsx-to-csv.py --provider CAL --year 2026 --batch
 uv run scripts/xlsx-rename.py --provider MAX --year 2026 --batch
 ```
 
+### FamilyRunner Desktop App
+
+A native macOS GUI for running the XLSX scripts without a terminal:
+
+```bash
+cd apps/desktop
+uv sync          # first time only
+uv run flet run main.py
+```
+
+Select provider (MAX/CAL), pick an action tile, browse for a file or folder, and hit RUN.
+
 ### Running Local Dev Server
 
 ```bash
@@ -168,6 +180,7 @@ apps/
   api/              # Fastify server, database migrations, services
   web/              # Next.js frontend
   mobile/           # Expo app (Phase 8+)
+  desktop/          # FamilyRunner — native macOS GUI for xlsx scripts (Flet/Python)
 
 packages/
   types/            # Shared TypeScript types
