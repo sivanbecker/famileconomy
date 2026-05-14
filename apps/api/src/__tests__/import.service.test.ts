@@ -219,6 +219,7 @@ describe('ImportService', () => {
         inserted: 1,
         duplicates: 0,
         withinFileDuplicates: 0,
+        pendingSkipped: 0,
         errors: [],
         skippedRows: [],
       })
@@ -235,6 +236,7 @@ describe('ImportService', () => {
         inserted: 1,
         duplicates: 0,
         withinFileDuplicates: 0,
+        pendingSkipped: 0,
         errors: [],
         skippedRows: [],
       })
@@ -428,6 +430,7 @@ describe('ImportService', () => {
         inserted: 1,
         duplicates: 0,
         withinFileDuplicates: 0,
+        pendingSkipped: 0,
         errors: [],
         skippedRows: [],
       })
@@ -520,79 +523,26 @@ describe('ImportService', () => {
       vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
     })
 
-    it('inserts a pending CAL row with status=PENDING', async () => {
+    it('silently skips pending rows — does not insert them', async () => {
       vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
 
-      await service.importCsv({
+      const result = await service.importCsv({
         csv: CAL_PENDING_ROW,
         filename: 'cal-may.csv',
         provider: 'CAL',
         userId: USER_ID,
       })
 
-      expect(prisma.transaction.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({ status: 'PENDING' }),
-        })
-      )
+      expect(prisma.transaction.create).not.toHaveBeenCalled()
+      expect(result.inserted).toBe(0)
+      expect(result.duplicates).toBe(0)
+      expect(result.pendingSkipped).toBe(1)
+      expect(result.errors).toEqual([])
     })
 
-    it('promotes an existing PENDING row to CLEARED when the settled version arrives', async () => {
-      const PENDING_TX_ID = 'pending-tx-uuid'
-      // dedup hash check: no exact hash match (different chargeDate changes nothing in hash)
-      vi.mocked(prisma.transaction.findFirst)
-        // first call: dedupe hash lookup → no match (different billing month)
-        .mockResolvedValueOnce(null)
-        // second call: pending lookup → finds the existing PENDING row
-        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
-
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
-
-      await service.importCsv({
-        csv: CAL_CLEARED_ROW,
-        filename: 'cal-jun.csv',
-        provider: 'CAL',
-        userId: USER_ID,
-      })
-
-      expect(prisma.transaction.update).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { id: PENDING_TX_ID },
-          data: expect.objectContaining({ status: 'CLEARED' }),
-        })
-      )
-    })
-
-    it('marks the new cleared row as DUPLICATE of the promoted transaction', async () => {
-      const PENDING_TX_ID = 'pending-tx-uuid'
-      vi.mocked(prisma.transaction.findFirst)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
-
-      await service.importCsv({
-        csv: CAL_CLEARED_ROW,
-        filename: 'cal-jun.csv',
-        provider: 'CAL',
-        userId: USER_ID,
-      })
-
-      expect(prisma.transaction.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          data: expect.objectContaining({
-            status: 'DUPLICATE',
-            duplicateOf: PENDING_TX_ID,
-          }),
-        })
-      )
-    })
-
-    it('counts a pending promotion as inserted=0, duplicates=1', async () => {
-      const PENDING_TX_ID = 'pending-tx-uuid'
-      vi.mocked(prisma.transaction.findFirst)
-        .mockResolvedValueOnce(null)
-        .mockResolvedValueOnce({ id: PENDING_TX_ID, status: 'PENDING' } as never)
-      vi.mocked(prisma.transaction.update).mockResolvedValue({} as never)
+    it('inserts the cleared version of a previously-pending row as a normal new transaction', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({ id: 'new-tx' } as never)
 
       const result = await service.importCsv({
         csv: CAL_CLEARED_ROW,
@@ -601,9 +551,13 @@ describe('ImportService', () => {
         userId: USER_ID,
       })
 
-      expect(result.inserted).toBe(0)
-      expect(result.duplicates).toBe(1)
-      expect(result.errors).toEqual([])
+      expect(result.inserted).toBe(1)
+      expect(result.duplicates).toBe(0)
+      expect(prisma.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.not.objectContaining({ status: 'PENDING' }),
+        })
+      )
     })
   })
 
@@ -756,6 +710,276 @@ describe('ImportService', () => {
       expect(result.duplicates).toBe(2)
       expect(result.withinFileDuplicates).toBe(0)
       expect(result.skippedRows).toHaveLength(2)
+    })
+  })
+
+  // ─── Cross-batch dedup (global scope) ────────────────────────────────────
+
+  describe('cross-batch deduplication', () => {
+    // A "new" file that shares rows with a previously imported file
+    const MAX_NEW_FILE_WITH_OLD_ROWS =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `05/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      // old row (already imported in a previous batch)
+      `09-04-2026,מאפיית בראשית,שונות,5432,רגילה,17,₪,17,₪,10-05-2026,,,,,,\n` +
+      // new row (only in this file)
+      `12-04-2026,סופרמרקט שופרסל,מזון,5432,רגילה,120,₪,120,₪,10-05-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `137₪,,,,,,,,,,,,,,,`
+
+    // Installment scenario — same merchant/amount on different calendar dates
+    const MAX_INSTALLMENT_MONTH1 =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `05/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      `15-04-2026,יס פלאנט,שונות,5432,תשלומים,99,₪,99,₪,10-05-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `99₪,,,,,,,,,,,,,,,`
+
+    const MAX_INSTALLMENT_MONTH2 =
+      `כל המשתמשים (2),,,,,,,,,,,,,,,\n` +
+      `כל הכרטיסים (5),,,,,,,,,,,,,,,\n` +
+      `06/2026,,,,,,,,,,,,,,,\n` +
+      `תאריך עסקה,שם בית העסק,קטגוריה,4 ספרות אחרונות של כרטיס האשראי,סוג עסקה,סכום חיוב,מטבע חיוב,סכום עסקה מקורי,מטבע עסקה מקורי,תאריך חיוב,הערות,תיוגים,מועדון הנחות,מפתח דיסקונט,אופן ביצוע ההעסקה,"שער המרה ממטבע מקור/התחשבנות לש""ח"\n` +
+      // Same merchant and amount but a DIFFERENT transactionDate — not a duplicate
+      `15-05-2026,יס פלאנט,שונות,5432,תשלומים,99,₪,99,₪,10-06-2026,,,,,,\n` +
+      `,,,,,,,,,,,,,,,\n` +
+      `סך הכל,,,,,,,,,,,,,,,\n` +
+      `99₪,,,,,,,,,,,,,,,`
+
+    const EXISTING_TX_ID = 'existing-tx-uuid'
+    const NEW_BATCH_ID = 'batch-2'
+
+    beforeEach(() => {
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.account.create).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({
+        ...MOCK_BATCH,
+        id: NEW_BATCH_ID,
+        filename: 'max-new.csv',
+      })
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('detects a duplicate from a PREVIOUS batch (different importBatchId)', async () => {
+      // The old row matches; the new row is genuinely new
+      vi.mocked(prisma.transaction.findFirst)
+        .mockResolvedValueOnce({
+          id: EXISTING_TX_ID,
+          importBatch: { filename: 'max-old.csv' },
+        } as never) // old row → duplicate
+        .mockResolvedValueOnce(null) // new row → no existing PENDING
+        .mockResolvedValueOnce(null) // new row → not a PENDING match
+
+      const result = await service.importCsv({
+        csv: MAX_NEW_FILE_WITH_OLD_ROWS,
+        filename: 'max-new.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      expect(result.duplicates).toBe(1)
+      expect(result.inserted).toBe(1)
+      expect(result.skippedRows).toHaveLength(1)
+      expect(result.skippedRows[0]).toMatchObject({
+        date: '2026-04-09',
+        description: 'מאפיית בראשית',
+        originalImportedFrom: 'max-old.csv',
+      })
+    })
+
+    it('dedup query does NOT include importBatchId in the where clause', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max-new.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      // The dedup findFirst call must NOT filter by importBatchId
+      const dedupeCall = vi.mocked(prisma.transaction.findFirst).mock.calls.find(args => {
+        const where = args[0]?.where as Record<string, unknown> | undefined
+        return where !== undefined && 'dedupeHash' in where
+      })
+      expect(dedupeCall).toBeDefined()
+      const where = dedupeCall?.[0]?.where as Record<string, unknown> | undefined
+      expect(where).not.toHaveProperty('importBatchId')
+    })
+
+    it('dedup query excludes DUPLICATE and WITHIN_FILE_DUPLICATE rows', async () => {
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      await service.importCsv({
+        csv: MAX_SINGLE_ROW,
+        filename: 'max-new.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+
+      const dedupeCall = vi.mocked(prisma.transaction.findFirst).mock.calls.find(args => {
+        const where = args[0]?.where as Record<string, unknown> | undefined
+        return where !== undefined && 'dedupeHash' in where
+      })
+      expect(dedupeCall).toBeDefined()
+      const where = dedupeCall?.[0]?.where as Record<string, unknown> | undefined
+      expect(where).toMatchObject({
+        status: { notIn: expect.arrayContaining(['DUPLICATE', 'WITHIN_FILE_DUPLICATE']) },
+      })
+    })
+
+    it('does NOT flag installments as duplicates when they fall on different dates', async () => {
+      // First import: month 1 installment
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+      const month1 = await service.importCsv({
+        csv: MAX_INSTALLMENT_MONTH1,
+        filename: 'max-may.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+      expect(month1.inserted).toBe(1)
+      expect(month1.duplicates).toBe(0)
+
+      vi.resetAllMocks()
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({ ...MOCK_BATCH, id: 'batch-june' })
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null) // different hash → no match
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+
+      // Second import: month 2 installment — different date, different hash → NOT a duplicate
+      const month2 = await service.importCsv({
+        csv: MAX_INSTALLMENT_MONTH2,
+        filename: 'max-june.csv',
+        provider: 'MAX',
+        userId: USER_ID,
+      })
+      expect(month2.inserted).toBe(1)
+      expect(month2.duplicates).toBe(0)
+    })
+  })
+
+  // ─── Fixture-based cross-batch dedup (real CAL reports) ─────────────────
+
+  describe('fixture: real CAL reports — partial re-import', () => {
+    // Uses the example files from examples/ to simulate the real user workflow:
+    //   1. Import "cal monthly report example.csv"  (20 rows: 18 cleared + 2 pending)
+    //   2. Import "cal-monthly-report-example-extended.csv"
+    //      (same 20 rows, 2 pending now settled, + 3 brand-new rows)
+    // Expected: second import inserts 3 new rows and flags 20 as duplicates.
+
+    const FIXTURES_DIR = `${process.cwd()}/src/__tests__/fixtures`
+
+    let originalCsv: string
+    let extendedCsv: string
+
+    beforeEach(async () => {
+      const { readFileSync } = await import('node:fs')
+      originalCsv = readFileSync(`${FIXTURES_DIR}/cal-monthly-report-example.csv`, 'utf-8')
+      extendedCsv = readFileSync(`${FIXTURES_DIR}/cal-monthly-report-example-extended.csv`, 'utf-8')
+
+      vi.mocked(prisma.account.findFirst).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.account.create).mockResolvedValue(MOCK_ACCOUNT)
+      vi.mocked(prisma.importBatch.findFirst).mockResolvedValue(null)
+      vi.mocked(prisma.transaction.create).mockResolvedValue({} as never)
+      vi.mocked(prisma.auditLog.create).mockResolvedValue({} as never)
+    })
+
+    it('first import: inserts all 20 rows from the original report', async () => {
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({
+        ...MOCK_BATCH,
+        id: 'batch-original',
+      })
+      vi.mocked(prisma.transaction.findFirst).mockResolvedValue(null)
+
+      const result = await service.importCsv({
+        csv: originalCsv,
+        filename: 'cal monthly report example.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      // 18 cleared rows inserted; 2 pending rows silently skipped
+      expect(result.inserted).toBe(18)
+      expect(result.duplicates).toBe(0)
+      expect(result.errors).toEqual([])
+    })
+
+    it('second import: only the 5 new/settled rows are inserted; the 18 overlapping cleared rows are duplicates', async () => {
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({
+        ...MOCK_BATCH,
+        id: 'batch-extended',
+      })
+
+      const EXISTING = {
+        id: 'existing-tx',
+        importBatch: { filename: 'cal monthly report example.csv' },
+      } as never
+
+      // Extended file row order (newest first):
+      //   29/4, 28/4, 27/4       → 3 brand-new rows (dedup → null)
+      //   26/4 פרשמרקט (cleared) → was pending in original, now cleared → new insert (dedup → null)
+      //   26/4 בוטיק (cleared)   → same (dedup → null)
+      //   24/4..20/4/25          → 18 cleared overlapping rows (dedup → existing)
+      vi.mocked(prisma.transaction.findFirst)
+        // 5 new/settled rows: no dedup match
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        // 18 overlapping cleared rows: each matched by dedup hash
+        .mockResolvedValue(EXISTING)
+
+      const result = await service.importCsv({
+        csv: extendedCsv,
+        filename: 'cal-monthly-report-example-extended.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      expect(result.inserted).toBe(5)
+      expect(result.duplicates).toBe(18)
+      expect(result.errors).toEqual([])
+      expect(result.skippedRows).toHaveLength(18)
+    })
+
+    it('second import: skippedRows reference the original report filename', async () => {
+      vi.mocked(prisma.importBatch.create).mockResolvedValue({
+        ...MOCK_BATCH,
+        id: 'batch-extended',
+      })
+
+      vi.mocked(prisma.transaction.findFirst)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(null)
+        .mockResolvedValue({
+          id: 'existing-tx',
+          importBatch: { filename: 'cal monthly report example.csv' },
+        } as never)
+
+      const result = await service.importCsv({
+        csv: extendedCsv,
+        filename: 'cal-monthly-report-example-extended.csv',
+        provider: 'CAL',
+        userId: USER_ID,
+      })
+
+      for (const row of result.skippedRows) {
+        expect(row.originalImportedFrom).toBe('cal monthly report example.csv')
+      }
     })
   })
 

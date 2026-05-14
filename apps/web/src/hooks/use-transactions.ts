@@ -6,12 +6,7 @@ import { summarizeMonth } from '@famileconomy/utils'
 import type { MonthSummary } from '@famileconomy/utils'
 import { ALL_ACCOUNTS } from '../store/account'
 
-export type TransactionStatus =
-  | 'CLEARED'
-  | 'PENDING'
-  | 'DUPLICATE'
-  | 'REVIEWED_OK'
-  | 'WITHIN_FILE_DUPLICATE'
+export type TransactionStatus = 'CLEARED' | 'DUPLICATE' | 'REVIEWED_OK' | 'WITHIN_FILE_DUPLICATE'
 
 export type ReviewStatus = 'USER_REVIEWED' | 'USER_FLAGGED' | null
 

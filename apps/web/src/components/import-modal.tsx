@@ -33,6 +33,7 @@ interface ImportResult {
   inserted: number
   duplicates: number
   withinFileDuplicates: number
+  pendingSkipped: number
   errors: string[]
   skippedRows: DuplicateRecord[]
 }
@@ -90,18 +91,19 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
       const res = await apiClient.post<ImportResult>(endpoint, formData, {
         headers: { 'Content-Type': 'multipart/form-data' },
       })
-      const { inserted, duplicates, withinFileDuplicates } = res.data
+      const { inserted, duplicates, withinFileDuplicates, pendingSkipped } = res.data
 
       const parts: string[] = [`יובאו ${inserted} עסקאות`]
       if (duplicates > 0) parts.push(`${duplicates} כפולות דולגו`)
       if (withinFileDuplicates > 0) parts.push(`${withinFileDuplicates} חשודות ככפולות`)
+      if (pendingSkipped > 0) parts.push(`${pendingSkipped} בקליטה דולגו`)
       toast(parts.join(' · '), 'success')
 
       await queryClient.invalidateQueries({ queryKey: ['transactions'] })
       await queryClient.invalidateQueries({ queryKey: ['accounts', user?.id ?? userId] })
 
       // Show results panel if there's anything to report
-      if (duplicates > 0 || withinFileDuplicates > 0) {
+      if (duplicates > 0 || withinFileDuplicates > 0 || pendingSkipped > 0) {
         setImportResult(res.data)
       } else {
         handleClose()
@@ -144,6 +146,8 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                     {importResult.duplicates > 0 && ` · ${importResult.duplicates} כפולות דולגו`}
                     {importResult.withinFileDuplicates > 0 &&
                       ` · ${importResult.withinFileDuplicates} חשודות ככפולות בתוך הקובץ`}
+                    {importResult.pendingSkipped > 0 &&
+                      ` · ${importResult.pendingSkipped} בקליטה דולגו`}
                   </p>
                 </div>
 
@@ -177,6 +181,15 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                     </p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       עסקאות אלו יובאו ומסומנות בדף ההוצאות — בדוק אותן ואשר אם הן לגיטימיות.
+                    </p>
+                  </div>
+                )}
+
+                {importResult.pendingSkipped > 0 && (
+                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2.5 text-sm">
+                    <p className="font-medium">{importResult.pendingSkipped} עסקאות בקליטה דולגו</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      עסקאות אלו טרם אושרו לחיוב. הן יופיעו בדוח הבא לאחר שיסולקו.
                     </p>
                   </div>
                 )}
