@@ -117,7 +117,7 @@
 - [x] CSV parser: Max (`מקס / לאומי קארד`) — TDD
 - [x] CSV parser: Cal (`כאל`) — TDD
 - [x] Installment grouping (`תשלום 2/6`) — TDD
-- [x] Row-level dedup: SHA-256 hash of `accountId|date|amountAgorot|description`; duplicates inserted as `status=DUPLICATE` with `duplicate_of` FK pointing at the original — TDD
+- [x] Row-level dedup: SHA-256 hash of `accountId|date|amountAgorot|description|installmentNum`; duplicates inserted as `status=DUPLICATE` with `duplicate_of` FK pointing at the original — TDD; dedup is global across all batches (not batch-scoped) so re-importing a newer report only inserts genuinely new rows
 - [x] Batch-level dedup: SHA-256 hash of full file content stored on `import_batches`; re-uploading the same file returns 409 before any rows are processed — TDD
 - [x] `DUPLICATE` / `REVIEWED_OK` enum values + `duplicate_of` self-referential FK on `transactions` (migrations 005, 006)
 - [x] `file_hash` column on `import_batches` with partial unique index (migration 007)
@@ -145,7 +145,7 @@
 - [x] Auto-create accounts on import: extract card identifiers from parsers, findOrCreateAccount in service, provider radio in modal
 - [x] CAL: parse charge date from billing header; filter transactions by chargeDate so installments from prior months appear in the correct billing month
 - [x] CAL: detect CRLF line endings inside quoted column headers (Windows exports)
-- [x] CAL: detect "עסקה בקליטה" → store as PENDING; auto-promote to CLEARED when settled version arrives in a later statement
+- [x] CAL: detect "עסקה בקליטה" → skip on import (pending rows have no confirmed charge date/amount; they will import normally once settled in a future statement)
 - [x] Fix: MAX refund/cancellation (negative amounts) treated as expense reductions, not income
 - [x] Fix: transaction list rows show card last four / account label (colorful badges per card)
 - [x] Fix: CAL parser now stamps cardLastFour from header onto every row
