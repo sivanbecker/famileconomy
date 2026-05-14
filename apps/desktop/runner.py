@@ -28,6 +28,15 @@ def _get_config(provider: str) -> tuple[dict, list[str]]:
     return config, valid_cards
 
 
+def get_xlsx_base(provider: str) -> str | None:
+    """Return the xlsx_base path for the given provider, or None if not configured."""
+    config, _ = _get_config(provider)
+    path = config.get(provider, {}).get("xlsx_base")
+    if path and Path(path).exists():
+        return path
+    return None
+
+
 def rename_single(
     file_path: str,
     provider: str,

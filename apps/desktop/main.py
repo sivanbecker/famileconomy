@@ -103,10 +103,12 @@ async def main(page: ft.Page):
     folder_picker = ft.FilePicker()
 
     async def pick_file(_=None):
+        initial = runner.get_xlsx_base(selected_provider[0])
         files = await file_picker.pick_files(
             allowed_extensions=["xlsx"],
             allow_multiple=False,
             file_type=ft.FilePickerFileType.CUSTOM,
+            initial_directory=initial,
         )
         if files:
             picked_path[0] = files[0].path
@@ -114,7 +116,8 @@ async def main(page: ft.Page):
             page.update()
 
     async def pick_folder(_=None):
-        path = await folder_picker.get_directory_path()
+        initial = runner.get_xlsx_base(selected_provider[0])
+        path = await folder_picker.get_directory_path(initial_directory=initial)
         if path:
             picked_path[0] = path
             path_display.value = path
