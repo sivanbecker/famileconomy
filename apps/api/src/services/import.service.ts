@@ -23,6 +23,7 @@ export interface ImportResult {
   inserted: number
   duplicates: number
   withinFileDuplicates: number
+  pendingSkipped: number
   errors: string[]
   skippedRows: DuplicateRecord[]
 }
@@ -149,6 +150,7 @@ export class ImportService {
     let inserted = 0
     let duplicates = 0
     let withinFileDuplicates = 0
+    let pendingSkipped = 0
     const skippedRows: DuplicateRecord[] = []
 
     for (const cardLastFour of cardIdentifiers) {
@@ -163,10 +165,11 @@ export class ImportService {
       inserted += result.inserted
       duplicates += result.duplicates
       withinFileDuplicates += result.withinFileDuplicates
+      pendingSkipped += result.pendingSkipped
       skippedRows.push(...result.skippedRows)
     }
 
-    return { inserted, duplicates, withinFileDuplicates, errors: [], skippedRows }
+    return { inserted, duplicates, withinFileDuplicates, pendingSkipped, errors: [], skippedRows }
   }
 
   // ─── CAL import ─────────────────────────────────────────────────────────────
@@ -193,6 +196,7 @@ export class ImportService {
       inserted: result.inserted,
       duplicates: result.duplicates,
       withinFileDuplicates: result.withinFileDuplicates,
+      pendingSkipped: result.pendingSkipped,
       errors: [],
       skippedRows: result.skippedRows,
     }
@@ -214,6 +218,7 @@ export class ImportService {
       let inserted = 0
       let duplicates = 0
       let withinFileDuplicates = 0
+      let pendingSkipped = 0
       const skippedRows: DuplicateRecord[] = []
 
       for (const cardLastFour of cardIdentifiers) {
@@ -228,10 +233,11 @@ export class ImportService {
         inserted += result.inserted
         duplicates += result.duplicates
         withinFileDuplicates += result.withinFileDuplicates
+        pendingSkipped += result.pendingSkipped
         skippedRows.push(...result.skippedRows)
       }
 
-      return { inserted, duplicates, withinFileDuplicates, errors: [], skippedRows }
+      return { inserted, duplicates, withinFileDuplicates, pendingSkipped, errors: [], skippedRows }
     } catch (err) {
       if (err instanceof ImportError) throw err
       if (err instanceof Error) {
@@ -267,6 +273,7 @@ export class ImportService {
         inserted: result.inserted,
         duplicates: result.duplicates,
         withinFileDuplicates: result.withinFileDuplicates,
+        pendingSkipped: result.pendingSkipped,
         errors: [],
         skippedRows: result.skippedRows,
       }
@@ -303,11 +310,13 @@ export class ImportService {
     inserted: number
     duplicates: number
     withinFileDuplicates: number
+    pendingSkipped: number
     skippedRows: DuplicateRecord[]
   }> {
     let inserted = 0
     let duplicates = 0
     let withinFileDuplicates = 0
+    let pendingSkipped = 0
     const skippedRows: DuplicateRecord[] = []
 
     // Build within-file group map: key → index of the first (canonical) occurrence.
@@ -430,6 +439,7 @@ export class ImportService {
         // Pending rows ("עסקה בקליטה") are skipped — they have no confirmed charge
         // date or amount yet. They will appear as normal cleared transactions in a
         // later statement and be imported at that point.
+        pendingSkipped++
         continue
       } else {
         const created = await prisma.transaction.create({
@@ -457,6 +467,6 @@ export class ImportService {
       }
     }
 
-    return { inserted, duplicates, withinFileDuplicates, skippedRows }
+    return { inserted, duplicates, withinFileDuplicates, pendingSkipped, skippedRows }
   }
 }

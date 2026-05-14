@@ -219,6 +219,7 @@ describe('ImportService', () => {
         inserted: 1,
         duplicates: 0,
         withinFileDuplicates: 0,
+        pendingSkipped: 0,
         errors: [],
         skippedRows: [],
       })
@@ -235,6 +236,7 @@ describe('ImportService', () => {
         inserted: 1,
         duplicates: 0,
         withinFileDuplicates: 0,
+        pendingSkipped: 0,
         errors: [],
         skippedRows: [],
       })
@@ -428,6 +430,7 @@ describe('ImportService', () => {
         inserted: 1,
         duplicates: 0,
         withinFileDuplicates: 0,
+        pendingSkipped: 0,
         errors: [],
         skippedRows: [],
       })
@@ -533,6 +536,7 @@ describe('ImportService', () => {
       expect(prisma.transaction.create).not.toHaveBeenCalled()
       expect(result.inserted).toBe(0)
       expect(result.duplicates).toBe(0)
+      expect(result.pendingSkipped).toBe(1)
       expect(result.errors).toEqual([])
     })
 
