@@ -185,6 +185,7 @@ function RatioChart({ data, chartType, isLoading }: RatioChartProps) {
 
   const primary = resolveColor('--primary')
   const muted = resolveColor('--muted-foreground')
+  const destructive = resolveColor('--destructive')
 
   const chartData = data.map(d => ({
     name: d.label,
@@ -207,7 +208,13 @@ function RatioChart({ data, chartType, isLoading }: RatioChartProps) {
           <Tooltip content={<RatioTooltip />} />
           <Legend iconType="circle" iconSize={8} />
           <Line type="monotone" dataKey="חיוני" stroke={primary} strokeWidth={2} dot={{ r: 3 }} />
-          <Line type="monotone" dataKey="לא חיוני" stroke={muted} strokeWidth={2} dot={{ r: 3 }} />
+          <Line
+            type="monotone"
+            dataKey="לא חיוני"
+            stroke={destructive}
+            strokeWidth={2}
+            dot={{ r: 3 }}
+          />
         </LineChart>
       ) : (
         <BarChart {...commonProps}>
