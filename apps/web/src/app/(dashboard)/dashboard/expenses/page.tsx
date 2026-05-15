@@ -927,6 +927,17 @@ export default function ExpensesPage() {
             </p>
           </div>
         )}
+        {stats.mustTotal + stats.niceToHaveTotal > 0 && (
+          <div className="rounded-lg bg-surface px-4 py-3 shadow-card-md">
+            <p className="text-xs text-muted-foreground">לא חיוני מסה״כ</p>
+            <p className="text-lg font-bold">
+              {((stats.niceToHaveTotal / (stats.mustTotal + stats.niceToHaveTotal)) * 100).toFixed(
+                1
+              )}
+              %
+            </p>
+          </div>
+        )}
         {stats.anomalyCount > 0 && (
           <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 shadow-card-md">
             <AlertTriangle className="h-4 w-4 text-warning" />

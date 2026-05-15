@@ -9,6 +9,8 @@ import {
   BarChart2,
   RefreshCw,
   AlertCircle,
+  Star,
+  StarOff,
 } from 'lucide-react'
 import { categoryBreakdown } from '@famileconomy/utils'
 import { MonthNavigator } from '../../../components/month-navigator'
@@ -42,6 +44,16 @@ export default function DashboardPage() {
   )
 
   const categorySlices = useMemo(() => categoryBreakdown(transactions), [transactions])
+
+  const { mustTotal, niceToHaveTotal } = useMemo(() => {
+    const must = transactions
+      .filter(tx => tx.amountAgorot > 0 && tx.isMust !== false)
+      .reduce((s, tx) => s + tx.amountAgorot, 0)
+    const niceToHave = transactions
+      .filter(tx => tx.amountAgorot > 0 && tx.isMust === false)
+      .reduce((s, tx) => s + tx.amountAgorot, 0)
+    return { mustTotal: must, niceToHaveTotal: niceToHave }
+  }, [transactions])
 
   function handlePrev() {
     if (month === 1) {
@@ -99,6 +111,25 @@ export default function DashboardPage() {
           icon={PiggyBank}
           variant="highlight"
         />
+      </div>
+
+      {/* ── Must / Nice-to-have row ── */}
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <KpiCard label="חיוני החודש" amountAgorot={mustTotal} icon={Star} variant="default" />
+        <KpiCard
+          label="לא חיוני החודש"
+          amountAgorot={niceToHaveTotal}
+          icon={StarOff}
+          variant="default"
+        />
+        {mustTotal + niceToHaveTotal > 0 && (
+          <div className="col-span-2 flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card-md lg:col-span-1">
+            <span className="text-sm font-medium text-muted-foreground">לא חיוני מסה״כ</span>
+            <p className="text-xl font-extrabold tabular-nums sm:text-display-sm">
+              {((niceToHaveTotal / (mustTotal + niceToHaveTotal)) * 100).toFixed(1)}%
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ── Fetch error ── */}
