@@ -22,6 +22,7 @@ export interface Transaction {
   installmentNum: number | null
   installmentOf: number | null
   notes: string | null
+  isMust: boolean | null
 }
 
 interface TransactionsResponse {

@@ -120,6 +120,7 @@ model Transaction {
   installmentOf   Int?              @map("installment_of")
   notes           String?
   reviewStatus    ReviewStatus?     @map("review_status")
+  isMust          Boolean?          @map("is_must")
   duplicateOf     String?           @map("duplicate_of")
   createdAt       DateTime          @default(now()) @map("created_at")
 

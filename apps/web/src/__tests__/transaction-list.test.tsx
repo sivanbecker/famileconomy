@@ -16,6 +16,7 @@ function makeTx(overrides: Partial<Transaction> = {}): Transaction {
     installmentNum: null,
     installmentOf: null,
     notes: null,
+    isMust: null,
     ...overrides,
   }
 }

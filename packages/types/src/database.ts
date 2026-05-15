@@ -62,6 +62,7 @@ export interface Transaction {
   installmentOf: number | null;
   notes: string | null;
   reviewStatus: ReviewStatus | null;
+  isMust: boolean | null;
   duplicateOf: string | null;
   createdAt: Date;
   account?: Account;

@@ -26,6 +26,8 @@ function makeTxRow(overrides: Record<string, unknown> = {}) {
     installmentNum: null,
     installmentOf: null,
     chargeDate: null,
+    isMust: null,
+    notes: null,
     ...overrides,
   }
 }
@@ -226,6 +228,76 @@ describe('GET /transactions — sort order', () => {
       url: `/transactions?accountId=${ACCOUNT_ID}&year=2026&month=5&sortBy=invalid`,
     })
     expect(res.statusCode).toBe(400)
+  })
+})
+
+// ─── GET /transactions — isMust filter ───────────────────────────────────────
+
+describe('GET /transactions — isMust filter', () => {
+  let app: FastifyInstance
+
+  afterEach(async () => {
+    await app.close()
+    vi.clearAllMocks()
+  })
+
+  it('passes isMust=true as DB-level filter (exact true)', async () => {
+    vi.mocked(prisma.transaction.findMany).mockResolvedValue([makeTxRow({ isMust: true })] as never)
+    app = await buildApp()
+    await app.inject({
+      method: 'GET',
+      url: `/transactions?accountId=${ACCOUNT_ID}&year=2026&month=5&isMust=true`,
+    })
+    const call = vi.mocked(prisma.transaction.findMany).mock.calls[0]?.[0]
+    expect(call?.where).toMatchObject({ isMust: true })
+  })
+
+  it('passes isMust=false as DB-level filter excluding true (covers null)', async () => {
+    vi.mocked(prisma.transaction.findMany).mockResolvedValue([
+      makeTxRow({ isMust: false }),
+    ] as never)
+    app = await buildApp()
+    await app.inject({
+      method: 'GET',
+      url: `/transactions?accountId=${ACCOUNT_ID}&year=2026&month=5&isMust=false`,
+    })
+    const call = vi.mocked(prisma.transaction.findMany).mock.calls[0]?.[0]
+    expect(call?.where).toMatchObject({ isMust: { not: true } })
+  })
+
+  it('omits isMust filter when not provided', async () => {
+    vi.mocked(prisma.transaction.findMany).mockResolvedValue([makeTxRow()] as never)
+    app = await buildApp()
+    await app.inject({
+      method: 'GET',
+      url: `/transactions?accountId=${ACCOUNT_ID}&year=2026&month=5`,
+    })
+    const call = vi.mocked(prisma.transaction.findMany).mock.calls[0]?.[0]
+    expect(call?.where).not.toHaveProperty('isMust')
+  })
+
+  it('returns 400 when isMust has an invalid value', async () => {
+    vi.mocked(prisma.transaction.findMany).mockResolvedValue([] as never)
+    app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: `/transactions?accountId=${ACCOUNT_ID}&year=2026&month=5&isMust=maybe`,
+    })
+    expect(res.statusCode).toBe(400)
+  })
+
+  it('includes isMust field in each transaction row of the response', async () => {
+    vi.mocked(prisma.transaction.findMany).mockResolvedValue([
+      makeTxRow({ isMust: false }),
+    ] as never)
+    app = await buildApp()
+    const res = await app.inject({
+      method: 'GET',
+      url: `/transactions?accountId=${ACCOUNT_ID}&year=2026&month=5`,
+    })
+    expect(res.statusCode).toBe(200)
+    const body = res.json<{ transactions: { isMust: boolean | null }[] }>()
+    expect(body.transactions[0]).toHaveProperty('isMust', false)
   })
 })
 

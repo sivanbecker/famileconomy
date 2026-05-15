@@ -15,6 +15,7 @@ export interface ExpenseFilters {
   maxAmount?: number
   sortBy?: SortField
   sortDir?: SortDir
+  isMust?: 'true' | 'false'
 }
 
 interface TransactionsResponse {
@@ -43,6 +44,7 @@ export function useExpenses(
       if (filters.maxAmount !== undefined) params.maxAmount = filters.maxAmount
       if (filters.sortBy) params.sortBy = filters.sortBy
       if (filters.sortDir) params.sortDir = filters.sortDir
+      if (filters.isMust !== undefined) params.isMust = filters.isMust
       const res = await apiClient.get<TransactionsResponse>('/transactions', { params })
       return res.data.transactions
     },
