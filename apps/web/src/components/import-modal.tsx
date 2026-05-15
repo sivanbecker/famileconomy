@@ -73,6 +73,7 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
   const [inlineError, setInlineError] = useState<string | null>(null)
   const [importResult, setImportResult] = useState<ImportResult | null>(null)
   const [noMatchError, setNoMatchError] = useState<string | null>(null)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
 
   const fileRef = useRef<HTMLInputElement>(null)
   const folderRef = useRef<HTMLInputElement>(null)
@@ -89,6 +90,7 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
     setImportResult(null)
     setImportMode('single')
     setNoMatchError(null)
+    setSelectedFiles([])
     reset()
     if (fileRef.current) fileRef.current.value = ''
     if (folderRef.current) folderRef.current.value = ''
@@ -99,9 +101,21 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
     setImportMode(mode)
     setInlineError(null)
     setNoMatchError(null)
+    setSelectedFiles([])
     reset()
     if (fileRef.current) fileRef.current.value = ''
     if (folderRef.current) folderRef.current.value = ''
+  }
+
+  function handleFolderChange() {
+    setNoMatchError(null)
+    const fileList = folderRef.current?.files
+    if (!fileList || fileList.length === 0) {
+      setSelectedFiles([])
+      return
+    }
+    const filtered = filterFilesForFolder(fileList, provider)
+    setSelectedFiles(filtered)
   }
 
   // ─── Single-file submit ────────────────────────────────────────────────────
@@ -171,21 +185,13 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
   // ─── Folder submit ─────────────────────────────────────────────────────────
 
   async function handleFolderSubmit() {
-    const fileList = folderRef.current?.files
-    if (!fileList || fileList.length === 0) {
+    if (selectedFiles.length === 0) {
       toast('יש לבחור תיקייה', 'error')
       return
     }
 
-    const files = filterFilesForFolder(fileList, provider)
-    if (files.length === 0) {
-      const ext = provider === 'MAX' ? 'XLSX' : 'CSV'
-      setNoMatchError(`לא נמצאו קבצי ${ext} מתאימים בתיקייה הנבחרת`)
-      return
-    }
-
     setNoMatchError(null)
-    await startBatch(files, provider, userId)
+    await startBatch(selectedFiles, provider, userId)
     await queryClient.invalidateQueries({ queryKey: ['transactions'] })
     await queryClient.invalidateQueries({ queryKey: ['accounts', user?.id ?? userId] })
   }
@@ -317,6 +323,8 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                         setProvider('MAX')
                         setInlineError(null)
                         setNoMatchError(null)
+                        const fl = folderRef.current?.files
+                        if (fl) setSelectedFiles(filterFilesForFolder(fl, 'MAX'))
                       }}
                       className="accent-primary"
                     />
@@ -332,6 +340,8 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
                         setProvider('CAL')
                         setInlineError(null)
                         setNoMatchError(null)
+                        const fl = folderRef.current?.files
+                        if (fl) setSelectedFiles(filterFilesForFolder(fl, 'CAL'))
                       }}
                       className="accent-primary"
                     />
@@ -394,18 +404,42 @@ export function ImportModal({ open, onClose, userId }: ImportModalProps) {
               {/* ── Folder picker (folder mode, not yet started) ─────────────── */}
               {importMode === 'folder' && !batchActive && (
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-sm font-medium" htmlFor="import-folder">
+                  <span className="text-sm font-medium">
                     {provider === 'MAX' ? 'תיקיית MAX (קבצי XLSX)' : 'תיקיית CAL (קבצי CSV)'}
-                  </label>
-                  {/* webkitdirectory is non-standard; cast to avoid TS error */}
+                  </span>
+                  {/* Hidden native input — browser folder picker, webkitdirectory is non-standard */}
                   <input
                     id="import-folder"
                     ref={folderRef}
                     type="file"
                     {...({ webkitdirectory: '' } as React.InputHTMLAttributes<HTMLInputElement>)}
-                    onChange={() => setNoMatchError(null)}
-                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-body-sm ring-offset-background file:border-0 file:bg-transparent file:text-body-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    onChange={handleFolderChange}
+                    className="sr-only"
                   />
+                  {/* Custom trigger + file list */}
+                  <label
+                    htmlFor="import-folder"
+                    className="flex cursor-pointer items-center gap-2 rounded-md border border-input bg-background px-3 py-2 text-body-sm transition-colors hover:bg-muted/40"
+                  >
+                    <FolderOpen className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="text-muted-foreground">
+                      {selectedFiles.length === 0
+                        ? 'בחר תיקייה...'
+                        : `${selectedFiles.length} קבצים נבחרו`}
+                    </span>
+                  </label>
+                  {selectedFiles.length > 0 && (
+                    <ul className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                      {selectedFiles.map(f => (
+                        <li
+                          key={f.webkitRelativePath}
+                          className="px-3 py-1.5 text-xs text-muted-foreground truncate"
+                        >
+                          {f.webkitRelativePath}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                   <p className="text-xs text-muted-foreground">
                     {provider === 'MAX'
                       ? 'בחר את התיקייה המכילה את קבצי ה-XLSX של MAX'
