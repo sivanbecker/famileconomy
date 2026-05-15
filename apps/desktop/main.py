@@ -1,6 +1,7 @@
 """FamilyRunner — desktop GUI for xlsx-rename and xlsx-to-csv scripts."""
 
 import asyncio
+from pathlib import Path
 from typing import Callable
 
 import flet as ft
@@ -48,6 +49,13 @@ ACTIONS = [
         batch=True,
         run=runner.convert_batch,
     ),
+    Action(
+        key="summary_batch",
+        label="Monthly\nSummary",
+        icon=ft.Icons.SUMMARIZE,
+        batch=True,
+        run=runner.summarise_batch,
+    ),
 ]
 
 # ─── Colours ─────────────────────────────────────────────────────────────────
@@ -69,8 +77,7 @@ INFO_COLOR = "#64b5f6"
 async def main(page: ft.Page):
     page.title = "FamilyRunner"
     page.bgcolor = BG
-    page.window.width = 860
-    page.window.height = 680
+    page.window.maximized = True
     page.window.resizable = True
     page.padding = 24
     page.theme = ft.Theme(color_scheme_seed=ACCENT)
@@ -81,6 +88,7 @@ async def main(page: ft.Page):
     selected_action: list[Action | None] = [None]
     picked_path: list[str] = [""]
     year_value: list[int | None] = [None]
+    per_card_value: list[bool] = [False]
 
     # ── Output log ─────────────────────────────────────────────────────────
 
@@ -103,7 +111,12 @@ async def main(page: ft.Page):
     folder_picker = ft.FilePicker()
 
     async def pick_file(_=None):
-        initial = runner.get_xlsx_base(selected_provider[0])
+        base = runner.get_xlsx_base(selected_provider[0])
+        if base and year_value[0] is not None:
+            candidate = str(Path(base) / str(year_value[0]))
+            initial = candidate if Path(candidate).exists() else base
+        else:
+            initial = base
         files = await file_picker.pick_files(
             allowed_extensions=["xlsx"],
             allow_multiple=False,
@@ -131,29 +144,82 @@ async def main(page: ft.Page):
         style=ft.ButtonStyle(shape=ft.RoundedRectangleBorder(radius=8)),
     )
 
-    year_field = ft.TextField(
-        label="Year",
-        hint_text="e.g. 2026",
-        width=120,
-        bgcolor=SURFACE,
-        color=TEXT,
-        label_style=ft.TextStyle(color=TEXT_DIM),
-        border_color=ACCENT_INACTIVE,
-        focused_border_color=ACCENT,
+    per_card_checkbox = ft.Checkbox(
+        label="Per card",
+        value=False,
         visible=False,
-        on_change=lambda e: _parse_year(e.control.value),
+        fill_color=ACCENT,
+        check_color="#000000",
+        label_style=ft.TextStyle(color=TEXT),
+        on_change=lambda e: per_card_value.__setitem__(0, e.control.value),
     )
 
-    def _parse_year(val: str):
-        try:
-            year_value[0] = int(val) if val.strip() else None
-        except ValueError:
-            year_value[0] = None
+    # ── Shared chip style ──────────────────────────────────────────────────
+    CHIP_W = 90
+    CHIP_H = 40
+    CHIP_RADIUS = 20
+
+    def _make_chip(text: str, selected: bool, on_click) -> ft.Container:
+        label = ft.Text(
+            text,
+            color="#000000" if selected else TEXT,
+            size=14,
+            weight=ft.FontWeight.W_600,
+            text_align=ft.TextAlign.CENTER,
+        )
+        return ft.Container(
+            content=label,
+            bgcolor=ACCENT if selected else SURFACE,
+            border_radius=CHIP_RADIUS,
+            width=CHIP_W,
+            height=CHIP_H,
+            alignment=ft.alignment.Alignment(0, 0),
+            on_click=on_click,
+            ink=True,
+        )
+
+    # ── Year chips ─────────────────────────────────────────────────────────
+
+    _year_chip_refs: dict[int, ft.Container] = {}
+
+    year_label = ft.Text("Year:", color=TEXT_DIM, size=14, visible=False)
+    year_chips_row = ft.Row([], spacing=8, visible=False, wrap=True)
+
+    def _select_year(year: int):
+        year_value[0] = year
+        for y, chip in _year_chip_refs.items():
+            is_sel = y == year
+            chip.bgcolor = ACCENT if is_sel else SURFACE
+            chip.content.color = "#000000" if is_sel else TEXT
+        page.update()
+
+    def _build_year_chips(provider: str, default_year: int | None = None):
+        years = runner.get_available_years(provider)
+        year_chips_row.controls.clear()
+        _year_chip_refs.clear()
+        year_value[0] = None
+
+        if not years:
+            year_chips_row.controls.append(
+                ft.Text("No year folders found", color=TEXT_DIM, size=12)
+            )
+            return
+
+        selected = default_year if default_year in years else years[-1]
+        year_value[0] = selected
+
+        for y in reversed(years):  # newest first
+            chip = _make_chip(str(y), y == selected, lambda _e, year=y: _select_year(year))
+            _year_chip_refs[y] = chip
+            year_chips_row.controls.append(chip)
+
+    file_folder_label = ft.Text("File / Folder:", color=TEXT_DIM, size=13, visible=False)
 
     input_row = ft.Row(
-        [pick_button, path_display, year_field],
+        [pick_button, path_display],
         spacing=12,
         vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        visible=False,
     )
 
     # ── Action tiles ────────────────────────────────────────────────────────
@@ -164,20 +230,31 @@ async def main(page: ft.Page):
         selected_action[0] = action
         picked_path[0] = ""
         path_display.value = "No file selected"
-        year_field.value = ""
         year_value[0] = None
+        per_card_value[0] = False
+        per_card_checkbox.value = False
 
         for key, card in tile_refs.items():
             card.bgcolor = ACCENT if key == action.key else SURFACE
 
+        is_summary = action.key.startswith("summary_")
+
         if action.batch:
-            pick_button.content = "Choose Folder…"
-            pick_button.on_click = pick_folder
-            year_field.visible = True
+            # Batch and summary: year chips only, folder resolved from config
+            file_folder_label.visible = False
+            input_row.visible = False
         else:
+            # Single file: show file picker
+            file_folder_label.visible = True
+            input_row.visible = True
             pick_button.content = "Choose File…"
             pick_button.on_click = pick_file
-            year_field.visible = False
+
+        year_label.visible = True
+        year_chips_row.visible = True
+        _build_year_chips(selected_provider[0])
+
+        per_card_checkbox.visible = is_summary
 
         page.update()
 
@@ -214,28 +291,25 @@ async def main(page: ft.Page):
     tiles_row = ft.Row(
         [make_tile(a) for a in ACTIONS],
         spacing=12,
-        wrap=False,
+        wrap=True,
     )
 
     # ── Provider chips ──────────────────────────────────────────────────────
 
-    provider_chips: dict[str, ft.Chip] = {}
+    provider_chips: dict[str, ft.Container] = {}
 
     def select_provider(provider: str):
         selected_provider[0] = provider
         for p, chip in provider_chips.items():
-            chip.bgcolor = ACCENT if p == provider else SURFACE
-            chip.label = ft.Text(p, color="#000000" if p == provider else TEXT)
+            is_sel = p == provider
+            chip.bgcolor = ACCENT if is_sel else SURFACE
+            chip.content.color = "#000000" if is_sel else TEXT
+        if year_chips_row.visible:
+            _build_year_chips(provider)
         page.update()
 
     for p in ["MAX", "CAL"]:
-        is_default = p == "MAX"
-        chip = ft.Chip(
-            label=ft.Text(p, color="#000000" if is_default else TEXT),
-            bgcolor=ACCENT if is_default else SURFACE,
-            on_click=lambda _, prov=p: select_provider(prov),
-            padding=ft.padding.Padding(left=16, top=6, right=16, bottom=6),
-        )
+        chip = _make_chip(p, p == "MAX", lambda _e, prov=p: select_provider(prov))
         provider_chips[p] = chip
 
     provider_row = ft.Row(
@@ -243,7 +317,7 @@ async def main(page: ft.Page):
             ft.Text("Provider:", color=TEXT_DIM, size=14),
             *provider_chips.values(),
         ],
-        spacing=12,
+        spacing=8,
         vertical_alignment=ft.CrossAxisAlignment.CENTER,
     )
 
@@ -269,12 +343,17 @@ async def main(page: ft.Page):
         if not action:
             add_log("Select an action first.", INFO_COLOR)
             return
-        if not picked_path[0]:
-            add_log("Pick a file or folder first.", INFO_COLOR)
-            return
-        if action.batch and year_value[0] is None:
-            add_log("Enter a valid year for batch mode.", INFO_COLOR)
-            return
+
+        is_summary = action.key.startswith("summary_")
+
+        if action.batch:
+            if year_value[0] is None:
+                add_log("Select a year first.", INFO_COLOR)
+                return
+        else:
+            if not picked_path[0]:
+                add_log("Pick a file first.", INFO_COLOR)
+                return
 
         clear_log()
         provider = selected_provider[0]
@@ -284,6 +363,14 @@ async def main(page: ft.Page):
         page.update()
 
         def _blocking():
+            if is_summary:
+                return action.run(None, provider, year_value[0], per_card_value[0])
+            if action.batch:
+                # Resolve folder from config using selected year
+                folder = runner.get_year_folder(provider, year_value[0])
+                if not folder:
+                    raise ValueError(f"Folder not found for {provider} / {year_value[0]}")
+                return action.run(folder, provider, year_value[0])
             return action.run(picked_path[0], provider, year_value[0])
 
         try:
@@ -308,6 +395,12 @@ async def main(page: ft.Page):
 
     run_button.on_click = _run
 
+    async def _on_keyboard(e: ft.KeyboardEvent):
+        if e.key == "Enter":
+            await _run()
+
+    page.on_keyboard_event = _on_keyboard
+
     # ── Layout ──────────────────────────────────────────────────────────────
 
     page.add(
@@ -316,10 +409,12 @@ async def main(page: ft.Page):
                 ft.Text("FamilyRunner", size=22, weight=ft.FontWeight.BOLD, color=TEXT),
                 ft.Divider(color=ACCENT_INACTIVE, height=1),
                 provider_row,
+                ft.Row([year_label, year_chips_row], spacing=10, vertical_alignment=ft.CrossAxisAlignment.CENTER),
                 ft.Text("Select Action:", color=TEXT_DIM, size=13),
                 tiles_row,
-                ft.Text("File / Folder:", color=TEXT_DIM, size=13),
+                file_folder_label,
                 input_row,
+                ft.Row([per_card_checkbox], spacing=16),
                 ft.Row([run_button], alignment=ft.MainAxisAlignment.END),
                 ft.Text("Output & Results:", color=TEXT_DIM, size=13),
                 ft.Container(
