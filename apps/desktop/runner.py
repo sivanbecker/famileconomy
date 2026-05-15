@@ -37,6 +37,27 @@ def get_xlsx_base(provider: str) -> str | None:
     return None
 
 
+def get_available_years(provider: str) -> list[int]:
+    """Return sorted list of year subfolders found in the provider's xlsx_base."""
+    base = get_xlsx_base(provider)
+    if not base:
+        return []
+    years = []
+    for child in Path(base).iterdir():
+        if child.is_dir() and child.name.isdigit() and len(child.name) == 4:
+            years.append(int(child.name))
+    return sorted(years)
+
+
+def get_year_folder(provider: str, year: int) -> str | None:
+    """Return the full path to xlsx_base/year for the given provider, or None."""
+    base = get_xlsx_base(provider)
+    if not base:
+        return None
+    folder = Path(base) / str(year)
+    return str(folder) if folder.exists() else None
+
+
 def rename_single(
     file_path: str,
     provider: str,
@@ -97,3 +118,25 @@ def convert_batch(
     for f in xlsx_files:
         results.append(mod.process_single_file(f, output_base, provider, valid_cards, year))
     return results
+
+
+def summarise_single(
+    file_path: str,
+    provider: str,
+    year: int | None = None,
+    per_card: bool = False,
+) -> tuple[bool, str]:
+    """Summarise monthly expenses from a single XLSX file."""
+    mod = _load_script("xlsx-summary.py")
+    return mod.summarise_single(file_path, provider, year, per_card)
+
+
+def summarise_batch(
+    folder_path: str,
+    provider: str,
+    year: int | None = None,
+    per_card: bool = False,
+) -> list[tuple[bool, str]]:
+    """Summarise monthly expenses from all XLSX files in a folder."""
+    mod = _load_script("xlsx-summary.py")
+    return mod.summarise_batch(folder_path, provider, year, per_card)
