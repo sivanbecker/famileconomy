@@ -220,7 +220,7 @@
 
 - [ ] Bank Leumi CSV parser
 - [ ] Bank Mizrahi CSV parser
-- [ ] Reports screen
+- [x] Reports screen — expenses-over-time + must/nice-to-have ratio charts, 3M/6M/12M/24M range
 - [ ] Push notifications (missing recurring, budget exceeded)
 - [ ] Data export (CSV, JSON)
 - [ ] Goals screen (יעדים) — savings targets, debt payoff
