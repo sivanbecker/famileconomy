@@ -15,7 +15,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { BarChart2, TrendingUp, AreaChart as AreaChartIcon, GitCompare } from 'lucide-react'
+import { BarChart2, TrendingUp, AreaChart as AreaChartIcon } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { AccountSelector } from '../../../../components/account-selector'
 import { useAuth } from '../../../../hooks/use-auth'
@@ -249,8 +249,8 @@ const CHART_TYPES: { label: string; value: ChartType; icon: React.ReactNode }[] 
 export default function ReportsPage() {
   const now = new Date()
   const [range, setRange] = useState<Range>(12)
-  const [chartType, setChartType] = useState<ChartType>('bar')
-  const [ratioChartType, setRatioChartType] = useState<RatioChartType>('bar')
+  const [chartType, setChartType] = useState<ChartType>('line')
+  const [ratioChartType, setRatioChartType] = useState<RatioChartType>('line')
 
   const { user } = useAuth()
   const { activeAccountId } = useAccountStore()
@@ -338,7 +338,7 @@ export default function ReportsPage() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <GitCompare className="h-3.5 w-3.5" />
+              <TrendingUp className="h-3.5 w-3.5" />
             </button>
           </div>
         </div>
