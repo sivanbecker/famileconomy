@@ -15,7 +15,7 @@ import {
   ResponsiveContainer,
   Legend,
 } from 'recharts'
-import { BarChart2, TrendingUp, AreaChart as AreaChartIcon } from 'lucide-react'
+import { BarChart2, TrendingUp, AreaChart as AreaChartIcon, GitCompare } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { AccountSelector } from '../../../../components/account-selector'
 import { useAuth } from '../../../../hooks/use-auth'
@@ -27,6 +27,7 @@ import type { MonthDataPoint } from '../../../../hooks/use-multi-month'
 
 type Range = 3 | 6 | 12 | 24
 type ChartType = 'bar' | 'line' | 'area'
+type RatioChartType = 'bar' | 'line'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -163,10 +164,11 @@ function ExpensesChart({ data, chartType, isLoading }: ExpensesChartProps) {
 
 interface RatioChartProps {
   data: MonthDataPoint[]
+  chartType: RatioChartType
   isLoading: boolean
 }
 
-function RatioChart({ data, isLoading }: RatioChartProps) {
+function RatioChart({ data, chartType, isLoading }: RatioChartProps) {
   if (isLoading) {
     return (
       <div className="flex h-56 items-end gap-1 px-4">
@@ -190,17 +192,34 @@ function RatioChart({ data, isLoading }: RatioChartProps) {
     'לא חיוני': d.totalAgorot > 0 ? parseFloat(d.niceToHavePct.toFixed(1)) : 0,
   }))
 
+  const commonProps = { data: chartData, margin: { top: 4, right: 16, left: 0, bottom: 0 } }
+  const yAxis = (
+    <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v}%`} domain={[0, 100]} width={40} />
+  )
+
   return (
     <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={chartData} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-        <YAxis tick={{ fontSize: 11 }} tickFormatter={v => `${v}%`} domain={[0, 100]} width={40} />
-        <Tooltip content={<RatioTooltip />} />
-        <Legend iconType="circle" iconSize={8} />
-        <Bar dataKey="חיוני" stackId="a" fill={primary} />
-        <Bar dataKey="לא חיוני" stackId="a" fill={muted} radius={[3, 3, 0, 0]} />
-      </BarChart>
+      {chartType === 'line' ? (
+        <LineChart {...commonProps}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+          {yAxis}
+          <Tooltip content={<RatioTooltip />} />
+          <Legend iconType="circle" iconSize={8} />
+          <Line type="monotone" dataKey="חיוני" stroke={primary} strokeWidth={2} dot={{ r: 3 }} />
+          <Line type="monotone" dataKey="לא חיוני" stroke={muted} strokeWidth={2} dot={{ r: 3 }} />
+        </LineChart>
+      ) : (
+        <BarChart {...commonProps}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+          <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+          {yAxis}
+          <Tooltip content={<RatioTooltip />} />
+          <Legend iconType="circle" iconSize={8} />
+          <Bar dataKey="חיוני" stackId="a" fill={primary} />
+          <Bar dataKey="לא חיוני" stackId="a" fill={muted} radius={[3, 3, 0, 0]} />
+        </BarChart>
+      )}
     </ResponsiveContainer>
   )
 }
@@ -224,6 +243,7 @@ export default function ReportsPage() {
   const now = new Date()
   const [range, setRange] = useState<Range>(12)
   const [chartType, setChartType] = useState<ChartType>('bar')
+  const [ratioChartType, setRatioChartType] = useState<RatioChartType>('bar')
 
   const { user } = useAuth()
   const { activeAccountId } = useAccountStore()
@@ -288,11 +308,37 @@ export default function ReportsPage() {
 
       {/* ── Must / Nice-to-have ratio over time ── */}
       <div className="flex flex-col gap-3 rounded-lg bg-surface p-4 shadow-card-md">
-        <h2 className="font-semibold">יחס חיוני / לא חיוני לאורך זמן</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-semibold">יחס חיוני / לא חיוני לאורך זמן</h2>
+          <div className="flex rounded-md border border-border bg-background">
+            <button
+              onClick={() => setRatioChartType('bar')}
+              title="עמודות"
+              className={`flex items-center px-2.5 py-1.5 text-xs transition-colors first:rounded-s-md last:rounded-e-md ${
+                ratioChartType === 'bar'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <BarChart2 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              onClick={() => setRatioChartType('line')}
+              title="קו"
+              className={`flex items-center px-2.5 py-1.5 text-xs transition-colors first:rounded-s-md last:rounded-e-md ${
+                ratioChartType === 'line'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <GitCompare className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground">
           אחוז מתוך סך ההוצאות בכל חודש — ניתן לראות האם ההוצאות הלא-חיוניות גדלות עם הזמן
         </p>
-        <RatioChart data={data} isLoading={isLoading} />
+        <RatioChart data={data} chartType={ratioChartType} isLoading={isLoading} />
       </div>
     </div>
   )
