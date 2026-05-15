@@ -152,6 +152,7 @@
 - [x] Dashboard: "כל החשבונות" all-accounts view as default in account selector
 - [x] Category distribution chart (pie/donut by category, Recharts) on dashboard
 - [x] Google Drive batch import — async folder walk, CSV detect, batch import (OAuth, service, routes; worker + frontend deferred to Phase 8)
+- [~] Local folder batch import — mode toggle in import modal; MAX: flat XLSX folder; CAL: year→month subfolder CSV walk; sequential upload, per-file progress list, abort support
 - [ ] Recurring payments status panel (שולם ✓ / צפוי ⏳) (real data from API)
 - [ ] CSV import flow: preview before confirm
 
