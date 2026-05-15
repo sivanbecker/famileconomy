@@ -26,6 +26,8 @@ const querySchema = z
     // Sorting
     sortBy: z.enum(SORT_FIELDS).optional(),
     sortDir: z.enum(['asc', 'desc']).optional(),
+    // Classification filter
+    isMust: z.enum(['true', 'false']).optional(),
   })
   .refine(d => d.accountId !== undefined || d.userId !== undefined, {
     message: 'Either accountId or userId must be provided',
@@ -54,6 +56,7 @@ export interface TransactionRow {
   installmentNum: number | null
   installmentOf: number | null
   notes: string | null
+  isMust: boolean | null
 }
 
 export interface AccountRow {
@@ -124,6 +127,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       maxAmount,
       sortBy,
       sortDir,
+      isMust,
     } = parsed.data
 
     const startDate = new Date(year, month - 1, 1)
@@ -158,8 +162,10 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
           { chargeDate: { gte: startDate, lt: endDate } },
           { chargeDate: null, transactionDate: { gte: startDate, lt: endDate } },
         ],
-        // category is stored plaintext — safe to filter at DB level
+        // category and isMust are stored plaintext — safe to filter at DB level
         ...(category !== undefined ? { category } : {}),
+        // isMust=true: only explicitly true; isMust=false: null (default) or false both mean "not must"
+        ...(isMust !== undefined ? { isMust: isMust === 'true' ? true : { not: true } } : {}),
       },
       select: {
         id: true,
@@ -173,6 +179,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
         installmentNum: true,
         installmentOf: true,
         notes: true,
+        isMust: true,
       },
       // Default DB sort; amount/description sorts are applied after decryption below
       orderBy:
@@ -194,6 +201,7 @@ export async function transactionRoutes(app: FastifyInstance): Promise<void> {
       installmentNum: row.installmentNum,
       installmentOf: row.installmentOf,
       notes: row.notes,
+      isMust: row.isMust,
     }))
 
     // Post-decrypt filters (description search and amount range operate on plaintext)

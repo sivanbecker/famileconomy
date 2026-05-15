@@ -17,6 +17,7 @@ import {
   Check,
   Flag,
   SlidersHorizontal,
+  Star,
 } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { categoryBreakdown } from '@famileconomy/utils'
@@ -32,6 +33,7 @@ import {
   useDeleteNote,
 } from '../../../../hooks/use-transaction-notes'
 import { useReviewTransaction, useBulkReview } from '../../../../hooks/use-review-transaction'
+import { useSetIsMust, useBulkSetIsMust } from '../../../../hooks/use-is-must'
 import type { TransactionNote } from '../../../../hooks/use-transaction-notes'
 import type { SortField, SortDir, ExpenseFilters } from '../../../../hooks/use-expenses'
 import type { Transaction, ReviewStatus } from '../../../../hooks/use-transactions'
@@ -385,6 +387,8 @@ function classifyNotes(tx: Transaction): NotesLabel {
   return 'אחר'
 }
 
+export type IsMustFilter = 'all' | 'must' | 'nice-to-have'
+
 interface FilterModalProps {
   available: NotesLabel[]
   checked: Set<NotesLabel>
@@ -398,6 +402,9 @@ interface FilterModalProps {
   onToggleReview: (f: ReviewFilter) => void
   onSelectAllReview: () => void
   onClearReview: () => void
+  // isMust filter
+  isMustFilter: IsMustFilter
+  onSetIsMustFilter: (f: IsMustFilter) => void
   onClose: () => void
 }
 
@@ -419,6 +426,8 @@ function FilterModal({
   onToggleReview,
   onSelectAllReview,
   onClearReview,
+  isMustFilter,
+  onSetIsMustFilter,
   onClose,
 }: FilterModalProps) {
   const ref = useRef<HTMLDivElement>(null)
@@ -518,6 +527,34 @@ function FilterModal({
           </label>
         ))}
       </div>
+
+      {/* ── isMust section ── */}
+      <div className="border-t border-border px-4 py-3">
+        <p className="text-sm font-semibold">סיווג הוצאה</p>
+      </div>
+      <div className="px-2 pb-3">
+        {(
+          [
+            { value: 'all', label: 'הכל' },
+            { value: 'must', label: 'חיוני בלבד' },
+            { value: 'nice-to-have', label: 'לא חיוני בלבד' },
+          ] as { value: IsMustFilter; label: string }[]
+        ).map(({ value, label }) => (
+          <label
+            key={value}
+            className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-surface-2"
+          >
+            <input
+              type="radio"
+              name="isMust"
+              checked={isMustFilter === value}
+              onChange={() => onSetIsMustFilter(value)}
+              className="h-4 w-4 accent-primary"
+            />
+            <span className="flex-1">{label}</span>
+          </label>
+        ))}
+      </div>
     </div>
   )
 }
@@ -529,6 +566,8 @@ interface BulkActionBarProps {
   onMarkReviewed: () => void
   onMarkFlagged: () => void
   onClearReview: () => void
+  onMarkMust: () => void
+  onMarkNiceToHave: () => void
   onDeselect: () => void
   isPending: boolean
 }
@@ -538,6 +577,8 @@ function BulkActionBar({
   onMarkReviewed,
   onMarkFlagged,
   onClearReview,
+  onMarkMust,
+  onMarkNiceToHave,
   onDeselect,
   isPending,
 }: BulkActionBarProps) {
@@ -546,7 +587,7 @@ function BulkActionBar({
       <span className="font-medium text-primary">
         {count} {count === 1 ? 'עסקה נבחרה' : 'עסקאות נבחרו'}
       </span>
-      <div className="ms-auto flex items-center gap-2">
+      <div className="ms-auto flex flex-wrap items-center gap-2">
         <button
           onClick={onMarkReviewed}
           disabled={isPending}
@@ -569,6 +610,25 @@ function BulkActionBar({
           className="rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
         >
           נקה סימון
+        </button>
+        <span className="h-4 w-px bg-border" />
+        <button
+          onClick={onMarkMust}
+          disabled={isPending}
+          className="flex items-center gap-1.5 rounded-md bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-50"
+          title="סמן כחיוני"
+        >
+          <Star className="h-3.5 w-3.5 fill-primary" />
+          חיוני
+        </button>
+        <button
+          onClick={onMarkNiceToHave}
+          disabled={isPending}
+          className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-surface-2 hover:text-foreground disabled:opacity-50"
+          title="סמן כלא חיוני"
+        >
+          <Star className="h-3.5 w-3.5" />
+          לא חיוני
         </button>
         <button
           onClick={onDeselect}
@@ -605,6 +665,7 @@ export default function ExpensesPage() {
   const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false)
   // null = all shown; Set = only these review statuses shown
   const [checkedReviewFilters, setCheckedReviewFilters] = useState<Set<ReviewFilter> | null>(null)
+  const [isMustFilter, setIsMustFilter] = useState<IsMustFilter>('all')
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -617,8 +678,10 @@ export default function ExpensesPage() {
     if (categoryFilter) f.category = categoryFilter
     if (minAmount) f.minAmount = Number(minAmount) * 100
     if (maxAmount) f.maxAmount = Number(maxAmount) * 100
+    if (isMustFilter === 'must') f.isMust = 'true'
+    else if (isMustFilter === 'nice-to-have') f.isMust = 'false'
     return f
-  }, [search, categoryFilter, minAmount, maxAmount, sortBy, sortDir])
+  }, [search, categoryFilter, minAmount, maxAmount, sortBy, sortDir, isMustFilter])
 
   const {
     data: transactions = [],
@@ -638,6 +701,8 @@ export default function ExpensesPage() {
     year,
     month
   )
+  const { mutate: setIsMust } = useSetIsMust()
+  const { mutate: bulkSetIsMust, isPending: isBulkIsMustPending } = useBulkSetIsMust()
 
   // Derive category averages for anomaly detection from unfiltered view
   const categoryAverages = useMemo(() => buildCategoryAverages(transactions), [transactions])
@@ -709,7 +774,19 @@ export default function ExpensesPage() {
     const anomalyCount = transactions.filter((tx: Transaction) =>
       isAnomaly(tx, categoryAverages)
     ).length
-    return { totalExpenses, anomalyCount, withinFileDupCount: suspectedDupIds.size }
+    const mustTotal = transactions
+      .filter((tx: Transaction) => tx.amountAgorot > 0 && tx.isMust !== false)
+      .reduce((s, tx) => s + tx.amountAgorot, 0)
+    const niceToHaveTotal = transactions
+      .filter((tx: Transaction) => tx.amountAgorot > 0 && tx.isMust === false)
+      .reduce((s, tx) => s + tx.amountAgorot, 0)
+    return {
+      totalExpenses,
+      anomalyCount,
+      withinFileDupCount: suspectedDupIds.size,
+      mustTotal,
+      niceToHaveTotal,
+    }
   }, [transactions, categoryAverages, suspectedDupIds])
 
   // Filtered list
@@ -779,12 +856,21 @@ export default function ExpensesPage() {
     setCheckedNotesLabels(null)
     setShowDuplicatesOnly(false)
     setCheckedReviewFilters(null)
+    setIsMustFilter('all')
   }
 
   function handleBulkReview(reviewStatus: ReviewStatus) {
     if (!userId) return
     bulkReview(
       { userId, ids: Array.from(selectedIds), reviewStatus },
+      { onSuccess: () => setSelectedIds(new Set()) }
+    )
+  }
+
+  function handleBulkIsMust(isMust: boolean | null) {
+    if (!userId) return
+    bulkSetIsMust(
+      { userId, ids: Array.from(selectedIds), isMust },
       { onSuccess: () => setSelectedIds(new Set()) }
     )
   }
@@ -800,7 +886,8 @@ export default function ExpensesPage() {
     checkedNotesLabels !== null && availableNotesLabels.some(l => !checkedNotesLabels.has(l))
   const reviewFilterActive =
     checkedReviewFilters !== null && allReviewOptions.some(f => !checkedReviewFilters.has(f))
-  const filterActive = notesFilterActive || showDuplicatesOnly || reviewFilterActive
+  const filterActive =
+    notesFilterActive || showDuplicatesOnly || reviewFilterActive || isMustFilter !== 'all'
 
   const hasFilters = search || categoryFilter || minAmount || maxAmount || filterActive
 
@@ -825,6 +912,21 @@ export default function ExpensesPage() {
           <p className="text-xs text-muted-foreground">עסקאות</p>
           <p className="text-lg font-bold">{transactions.length}</p>
         </div>
+        <div className="flex items-center gap-2 rounded-lg bg-surface px-4 py-3 shadow-card-md">
+          <Star className="h-4 w-4 fill-primary text-primary" />
+          <div>
+            <p className="text-xs text-muted-foreground">חיוני</p>
+            <p className="text-lg font-bold text-primary">{formatILS(stats.mustTotal)}</p>
+          </div>
+        </div>
+        {stats.niceToHaveTotal > 0 && (
+          <div className="rounded-lg bg-surface px-4 py-3 shadow-card-md">
+            <p className="text-xs text-muted-foreground">לא חיוני</p>
+            <p className="text-lg font-bold text-muted-foreground">
+              {formatILS(stats.niceToHaveTotal)}
+            </p>
+          </div>
+        )}
         {stats.anomalyCount > 0 && (
           <div className="flex items-center gap-2 rounded-lg bg-warning/10 px-4 py-3 shadow-card-md">
             <AlertTriangle className="h-4 w-4 text-warning" />
@@ -867,8 +969,10 @@ export default function ExpensesPage() {
           onMarkReviewed={() => handleBulkReview('USER_REVIEWED')}
           onMarkFlagged={() => handleBulkReview('USER_FLAGGED')}
           onClearReview={() => handleBulkReview(null)}
+          onMarkMust={() => handleBulkIsMust(null)}
+          onMarkNiceToHave={() => handleBulkIsMust(false)}
           onDeselect={() => setSelectedIds(new Set())}
-          isPending={isBulkPending}
+          isPending={isBulkPending || isBulkIsMustPending}
         />
       )}
 
@@ -911,6 +1015,8 @@ export default function ExpensesPage() {
               }}
               onSelectAllReview={() => setCheckedReviewFilters(new Set(allReviewOptions))}
               onClearReview={() => setCheckedReviewFilters(new Set())}
+              isMustFilter={isMustFilter}
+              onSetIsMustFilter={setIsMustFilter}
               onClose={() => setFilterOpen(false)}
             />
           )}
@@ -1069,6 +1175,8 @@ export default function ExpensesPage() {
                   const isSelected = selectedIds.has(tx.id)
                   const isReviewed = tx.reviewStatus === 'USER_REVIEWED'
                   const isFlagged = tx.reviewStatus === 'USER_FLAGGED'
+                  const isExpense = tx.amountAgorot > 0
+                  const isNiceToHave = tx.isMust === false
                   return (
                     <tr
                       key={tx.id}
@@ -1120,6 +1228,32 @@ export default function ExpensesPage() {
                               <Flag className="h-4 w-4" />
                             </button>
                           ) : null}
+                          {isExpense && (
+                            <button
+                              onClick={() =>
+                                userId &&
+                                setIsMust({
+                                  transactionId: tx.id,
+                                  userId,
+                                  isMust: isNiceToHave ? null : false,
+                                })
+                              }
+                              title={
+                                isNiceToHave
+                                  ? 'לא חיוני — לחץ לסימון כחיוני'
+                                  : 'חיוני — לחץ לסימון כלא חיוני'
+                              }
+                              className={`shrink-0 transition-colors ${
+                                isNiceToHave
+                                  ? 'text-muted-foreground opacity-0 hover:text-foreground group-hover:opacity-100'
+                                  : 'text-primary hover:opacity-70'
+                              }`}
+                            >
+                              <Star
+                                className={`h-3.5 w-3.5 ${isNiceToHave ? '' : 'fill-primary'}`}
+                              />
+                            </button>
+                          )}
                           {isSuspectedDup && (
                             <span title="עסקה חשודה ככפולה בתוך הקובץ">
                               <Copy className="h-3.5 w-3.5 flex-shrink-0 text-warning" />
