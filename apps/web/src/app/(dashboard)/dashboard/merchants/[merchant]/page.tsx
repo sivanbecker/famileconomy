@@ -20,8 +20,20 @@ import {
   Calendar,
   TrendingDown,
   Receipt,
+  BarChart2,
+  TrendingUp,
 } from 'lucide-react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from 'recharts'
 import { formatILS } from '@famileconomy/utils'
 import { useAuth } from '../../../../../hooks/use-auth'
 import {
@@ -636,6 +648,7 @@ export default function MerchantPage() {
   const userId = user?.id
 
   const [selectedYear, setSelectedYear] = useState<YearFilter>(new Date().getFullYear())
+  const [chartType, setChartType] = useState<'line' | 'bar'>('line')
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState('')
   const [minAmount, setMinAmount] = useState('')
@@ -879,19 +892,58 @@ export default function MerchantPage() {
       {/* ── Spending chart ── */}
       {chartBars.length > 0 && (
         <div className="rounded-lg bg-surface p-4 shadow-card-md">
-          <p className="mb-3 text-sm font-semibold text-muted-foreground">הוצאות לפי חודש</p>
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-sm font-semibold text-muted-foreground">הוצאות לפי חודש</p>
+            <div className="flex items-center gap-1 rounded-md border border-border p-0.5">
+              <button
+                onClick={() => setChartType('line')}
+                className={`rounded p-1.5 transition-colors ${chartType === 'line' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                title="גרף קו"
+              >
+                <TrendingUp className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => setChartType('bar')}
+                className={`rounded p-1.5 transition-colors ${chartType === 'bar' ? 'bg-primary/20 text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                title="גרף עמודות"
+              >
+                <BarChart2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={chartBars} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis
-                tick={{ fontSize: 11 }}
-                tickFormatter={(v: number) => formatILS(v).replace('₪', '').trim()}
-                width={60}
-              />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="value" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
-            </BarChart>
+            {chartType === 'line' ? (
+              <LineChart data={chartBars} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) => formatILS(v).replace('₪', '').trim()}
+                  width={60}
+                />
+                <Tooltip content={<ChartTooltip />} />
+                <Line
+                  type="monotone"
+                  dataKey="value"
+                  stroke="hsl(var(--destructive))"
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--destructive))', r: 4 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            ) : (
+              <BarChart data={chartBars} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) => formatILS(v).replace('₪', '').trim()}
+                  width={60}
+                />
+                <Tooltip content={<ChartTooltip />} />
+                <Bar dataKey="value" fill="hsl(var(--destructive) / 0.7)" radius={[3, 3, 0, 0]} />
+              </BarChart>
+            )}
           </ResponsiveContainer>
         </div>
       )}
