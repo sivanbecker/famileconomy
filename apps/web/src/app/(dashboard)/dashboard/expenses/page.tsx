@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Search,
   X,
@@ -18,6 +19,7 @@ import {
   Flag,
   SlidersHorizontal,
   Star,
+  Store,
 } from 'lucide-react'
 import { formatILS } from '@famileconomy/utils'
 import { categoryBreakdown } from '@famileconomy/utils'
@@ -649,6 +651,7 @@ export default function ExpensesPage() {
   const [year, setYear] = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
 
+  const router = useRouter()
   const { user } = useAuth()
   const { activeAccountId } = useAccountStore()
 
@@ -670,7 +673,33 @@ export default function ExpensesPage() {
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number
+    y: number
+    description: string
+  } | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement>(null)
+
   const userId = user?.id
+
+  useEffect(() => {
+    if (!contextMenu) return
+    function handleClose(e: MouseEvent) {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') setContextMenu(null)
+    }
+    document.addEventListener('mousedown', handleClose)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClose)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [contextMenu])
 
   const filters = useMemo((): ExpenseFilters => {
     const f: ExpenseFilters = { sortBy, sortDir }
@@ -1198,6 +1227,10 @@ export default function ExpensesPage() {
                             ? 'bg-warning/5'
                             : ''
                       }`}
+                      onContextMenu={e => {
+                        e.preventDefault()
+                        setContextMenu({ x: e.clientX, y: e.clientY, description: tx.description })
+                      }}
                     >
                       {/* Checkbox */}
                       <td className="px-3 py-3">
@@ -1332,6 +1365,28 @@ export default function ExpensesPage() {
           </table>
         </div>
       </div>
+
+      {/* ── Context menu ── */}
+      {contextMenu && (
+        <div
+          ref={contextMenuRef}
+          role="menu"
+          className="fixed z-50 min-w-52 rounded-lg border border-border bg-surface py-1 shadow-lg"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+        >
+          <button
+            role="menuitem"
+            className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-2"
+            onClick={() => {
+              setContextMenu(null)
+              router.push(`/dashboard/merchants/${encodeURIComponent(contextMenu.description)}`)
+            }}
+          >
+            <Store className="h-4 w-4 text-muted-foreground" />
+            <span>כל הוצאות &quot;{contextMenu.description}&quot;</span>
+          </button>
+        </div>
+      )}
     </div>
   )
 }
