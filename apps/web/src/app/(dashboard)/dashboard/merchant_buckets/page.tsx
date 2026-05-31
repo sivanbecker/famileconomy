@@ -122,8 +122,7 @@ function CreateBucketPanel({
                   key={desc}
                   onClick={() => {
                     setSelectedDescs(prev => [...prev, desc])
-                    setDescQuery('')
-                    setSearchOpen(false)
+                    // keep dropdown open and query intact so user can keep picking
                   }}
                   className="flex w-full items-center gap-2 px-4 py-2.5 text-start text-xs hover:bg-surface-2"
                 >
