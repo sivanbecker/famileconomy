@@ -71,9 +71,10 @@ export function useUpdateCategory(_accountId: string | null, _year: number, _mon
       return res.data
     },
     onSuccess: () => {
-      // Invalidate all transaction queries for this month so dashboard + expenses page refresh
+      // Invalidate all transaction queries so dashboard, expenses, and merchant pages refresh
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      void queryClient.invalidateQueries({ queryKey: ['merchant-transactions'] })
     },
   })
 }
