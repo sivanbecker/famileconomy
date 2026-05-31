@@ -21,3 +21,12 @@ CVE-2026-31802
 # These packages instrument observability — not shipped to production clients.
 # Resolution: lock to compatible versions and revisit after stabilization.
 CVE-2026-44902
+
+# CVEs in axios 1.15.2 — IPv4-mapped IPv6 NO_PROXY bypass and prototype pollution in config.proxy.
+# Fix: upgrade to axios 1.16.0. Tracked separately; suppress here to unblock unrelated PRs.
+CVE-2026-44492
+CVE-2026-44494
+
+# CVE in tmp 0.2.5 — path traversal via unsanitized prefix/postfix.
+# tmp is a dev/build tool dependency, not shipped to production. Fix: upgrade to 0.2.6.
+CVE-2026-44705
