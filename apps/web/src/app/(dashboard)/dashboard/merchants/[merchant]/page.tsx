@@ -617,6 +617,13 @@ function BulkActionBar({
   )
 }
 
+// ─── Chart colors ─────────────────────────────────────────────────────────────
+
+function resolveColor(varName: string): string {
+  if (typeof window === 'undefined') return '#888'
+  return getComputedStyle(document.documentElement).getPropertyValue(varName).trim() || '#888'
+}
+
 // ─── Chart tooltip ────────────────────────────────────────────────────────────
 
 interface ChartTooltipProps {
@@ -798,6 +805,10 @@ export default function MerchantPage() {
   const chartData = useMemo(() => buildMerchantChartData(data?.transactions ?? []), [data])
   const chartBars = chartData.map(d => ({ name: d.label, value: d.totalAgorot }))
 
+  // Resolve CSS custom properties to real color strings for Recharts (oklch values need runtime resolution)
+  const chartColor = resolveColor('--destructive')
+  const borderColor = resolveColor('--border')
+
   const mustPct = useMemo(() => {
     const expenses = transactions.filter(tx => tx.amountAgorot > 0)
     const mustCount = expenses.filter(tx => tx.isMust !== false).length
@@ -911,10 +922,10 @@ export default function MerchantPage() {
               </button>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={200}>
             {chartType === 'line' ? (
-              <LineChart data={chartBars} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+              <LineChart data={chartBars} margin={{ top: 12, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={borderColor} vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis
                   tick={{ fontSize: 11 }}
@@ -925,15 +936,15 @@ export default function MerchantPage() {
                 <Line
                   type="monotone"
                   dataKey="value"
-                  stroke="hsl(var(--destructive))"
-                  strokeWidth={2}
-                  dot={{ fill: 'hsl(var(--destructive))', r: 4 }}
-                  activeDot={{ r: 5 }}
+                  stroke={chartColor}
+                  strokeWidth={2.5}
+                  dot={{ fill: chartColor, stroke: chartColor, r: 5, strokeWidth: 2 }}
+                  activeDot={{ r: 6, fill: chartColor, stroke: chartColor }}
                 />
               </LineChart>
             ) : (
               <BarChart data={chartBars} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke={borderColor} vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                 <YAxis
                   tick={{ fontSize: 11 }}
@@ -941,7 +952,7 @@ export default function MerchantPage() {
                   width={60}
                 />
                 <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="value" fill="hsl(var(--destructive) / 0.7)" radius={[3, 3, 0, 0]} />
+                <Bar dataKey="value" fill={chartColor} fillOpacity={0.75} radius={[3, 3, 0, 0]} />
               </BarChart>
             )}
           </ResponsiveContainer>
