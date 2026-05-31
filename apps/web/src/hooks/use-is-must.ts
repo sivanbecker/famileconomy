@@ -26,6 +26,7 @@ export function useSetIsMust() {
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['merchant-transactions'] })
+      void queryClient.invalidateQueries({ queryKey: ['bucket-transactions'] })
     },
   })
 }
@@ -46,6 +47,7 @@ export function useBulkSetIsMust() {
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['merchant-transactions'] })
+      void queryClient.invalidateQueries({ queryKey: ['bucket-transactions'] })
     },
   })
 }

@@ -36,6 +36,7 @@ import {
 } from '../../../../hooks/use-transaction-notes'
 import { useReviewTransaction, useBulkReview } from '../../../../hooks/use-review-transaction'
 import { useSetIsMust, useBulkSetIsMust } from '../../../../hooks/use-is-must'
+import { useCreateMerchantBucket } from '../../../../hooks/use-merchant-bucket'
 import type { TransactionNote } from '../../../../hooks/use-transaction-notes'
 import type { SortField, SortDir, ExpenseFilters } from '../../../../hooks/use-expenses'
 import type { Transaction, ReviewStatus } from '../../../../hooks/use-transactions'
@@ -732,6 +733,7 @@ export default function ExpensesPage() {
   )
   const { mutate: setIsMust } = useSetIsMust()
   const { mutate: bulkSetIsMust, isPending: isBulkIsMustPending } = useBulkSetIsMust()
+  const { mutateAsync: createBucket } = useCreateMerchantBucket()
 
   // Derive category averages for anomaly detection from unfiltered view
   const categoryAverages = useMemo(() => buildCategoryAverages(transactions), [transactions])
@@ -1378,8 +1380,17 @@ export default function ExpensesPage() {
             role="menuitem"
             className="flex w-full items-center gap-2.5 px-4 py-2.5 text-sm hover:bg-surface-2"
             onClick={() => {
+              if (!userId) return
+              const desc = contextMenu.description
               setContextMenu(null)
-              router.push(`/dashboard/merchants/${encodeURIComponent(contextMenu.description)}`)
+              void createBucket(
+                { userId, name: desc, descriptions: [desc] },
+                {
+                  onSuccess: bucket => {
+                    router.push(`/dashboard/merchants/${bucket.id}`)
+                  },
+                }
+              )
             }}
           >
             <Store className="h-4 w-4 text-muted-foreground" />

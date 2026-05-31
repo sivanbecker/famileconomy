@@ -174,7 +174,8 @@
 - [x] Import and store הערות (notes) column from MAX and CAL files; display as subtitle in expenses list
 - [x] User-authored notes on transactions: `transaction_notes` table, POST/GET/PATCH/DELETE API, inline panel in expenses page (add, edit, delete with timestamps)
 - [x] Transaction review: mark reviewed (green check) / flag for re-check (red flag), bulk-select + bulk-mark, filter by review status in filter modal; separate `review_status` column independent of import-pipeline `status`
-- [~] Merchant detail page (`/dashboard/merchants/[merchant]`): right-click on any expense row → context menu → full per-merchant view with spending chart, stats bar (total, avg/month, count, date range, isMust %, installments), year filter (2025/2026/all), and all expenses-page features (bulk-select, review, isMust, notes, category edit, filters)
+- [x] Merchant detail page (`/dashboard/merchants/[merchant]`): right-click on any expense row → context menu → full per-merchant view with spending chart, stats bar (total, avg/month, count, date range, isMust %, installments), year filter (2025/2026/all), and all expenses-page features (bulk-select, review, isMust, notes, category edit, filters)
+- [~] Merchant buckets (`merchant_buckets` + `merchant_bucket_descriptions`): user-defined multi-description groupings; right-click creates a bucket and navigates to `/dashboard/merchants/[bucketId]`; bucket page shows editable name, description chips with search-to-add/remove, all transaction features scoped to all descriptions in the bucket
 - [~] Fix CAL CSV parser: real exports use `YYYY-MM-DD HH:MM:SS` dates and raw numeric amounts (no ₪ prefix)
 
 ### 7e — Safe-to-Spend

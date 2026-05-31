@@ -75,6 +75,7 @@ export function useUpdateCategory(_accountId: string | null, _year: number, _mon
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       void queryClient.invalidateQueries({ queryKey: ['merchant-transactions'] })
+      void queryClient.invalidateQueries({ queryKey: ['bucket-transactions'] })
     },
   })
 }

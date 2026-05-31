@@ -10,6 +10,7 @@ import { transactionNotesRoutes } from './routes/transaction-notes.js'
 import { transactionReviewRoutes } from './routes/transaction-review.js'
 import { transactionIsMustRoutes } from './routes/transaction-is-must.js'
 import { driveRoutes } from './routes/drive.js'
+import { merchantBucketRoutes } from './routes/merchant-buckets.js'
 
 initSentry()
 
@@ -29,6 +30,7 @@ export async function createApp(): Promise<FastifyInstance> {
   await app.register(transactionReviewRoutes)
   await app.register(transactionIsMustRoutes)
   await app.register(driveRoutes)
+  await app.register(merchantBucketRoutes)
 
   return app
 }

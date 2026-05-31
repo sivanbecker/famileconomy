@@ -18,6 +18,7 @@ export interface User {
   accounts?: Account[];
   refreshTokens?: RefreshToken[];
   auditLogs?: AuditLog[];
+  merchantBuckets?: MerchantBucket[];
 }
 
 export interface RefreshToken {
@@ -114,6 +115,23 @@ export interface RecurringMatch {
   matchedAt: Date;
   recurringExpense?: RecurringExpense;
   transaction?: Transaction;
+}
+
+export interface MerchantBucket {
+  id: string;
+  userId: string;
+  name: string;
+  createdAt: Date;
+  updatedAt: Date;
+  user?: User;
+  descriptions?: MerchantBucketDescription[];
+}
+
+export interface MerchantBucketDescription {
+  bucketId: string;
+  description: string;
+  addedAt: Date;
+  bucket?: MerchantBucket;
 }
 
 export interface AuditLog {

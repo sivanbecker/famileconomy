@@ -24,9 +24,10 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  accounts       Account[]
-  refreshTokens  RefreshToken[]
-  auditLogs      AuditLog[]
+  accounts        Account[]
+  refreshTokens   RefreshToken[]
+  auditLogs       AuditLog[]
+  merchantBuckets MerchantBucket[]
 
   @@map("users")
 }
@@ -192,6 +193,32 @@ model RecurringMatch {
   transaction      Transaction      @relation(fields: [transactionId], references: [id], onDelete: Cascade)
 
   @@map("recurring_matches")
+}
+
+// ─── Merchant Buckets ─────────────────────────────────────────────────────────
+
+model MerchantBucket {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  name         String
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  user         User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  descriptions MerchantBucketDescription[]
+
+  @@map("merchant_buckets")
+}
+
+model MerchantBucketDescription {
+  bucketId    String   @map("bucket_id")
+  description String
+  addedAt     DateTime @default(now()) @map("added_at")
+
+  bucket MerchantBucket @relation(fields: [bucketId], references: [id], onDelete: Cascade)
+
+  @@id([bucketId, description])
+  @@map("merchant_bucket_descriptions")
 }
 
 // ─── Audit Log ────────────────────────────────────────────────────────────────
