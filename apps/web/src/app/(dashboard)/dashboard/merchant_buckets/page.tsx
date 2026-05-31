@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Plus, X, Store, Tag, Loader2, ChevronLeft } from 'lucide-react'
+import { Search, Plus, X, Store, Tag, Loader2, ChevronLeft, Trash2 } from 'lucide-react'
 import { useAuth } from '../../../../hooks/use-auth'
 import {
   useMerchantBuckets,
   useCreateMerchantBucket,
+  useDeleteMerchantBucket,
   useSearchDescriptions,
 } from '../../../../hooks/use-merchant-bucket'
 
@@ -156,11 +157,18 @@ export default function MerchantBucketsPage() {
   const userId = user?.id
 
   const [showCreate, setShowCreate] = useState(false)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
 
   const { data: buckets = [], isLoading } = useMerchantBuckets(userId)
+  const { mutate: deleteBucket, isPending: isDeleting } = useDeleteMerchantBucket()
 
   function handleCreated(bucketId: string) {
     router.push(`/dashboard/merchants/${bucketId}`)
+  }
+
+  function handleDelete(bucketId: string) {
+    if (!userId) return
+    deleteBucket({ bucketId, userId }, { onSuccess: () => setConfirmDeleteId(null) })
   }
 
   return (
@@ -227,41 +235,76 @@ export default function MerchantBucketsPage() {
       {!isLoading && buckets.length > 0 && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {buckets.map(bucket => (
-            <button
+            <div
               key={bucket.id}
-              onClick={() => router.push(`/dashboard/merchants/${bucket.id}`)}
-              className="group flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 text-start shadow-card-md transition-colors hover:border-primary/50 hover:bg-surface-2/50"
+              className="group relative flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-card-md transition-colors hover:border-primary/50 hover:bg-surface-2/50"
             >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <Store className="h-4 w-4 shrink-0 text-muted-foreground" />
-                  <span className="font-semibold">{bucket.name}</span>
+              {/* Clickable area — navigate to bucket */}
+              <button
+                className="flex flex-col gap-3 text-start"
+                onClick={() => router.push(`/dashboard/merchants/${bucket.id}`)}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Store className="h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="font-semibold">{bucket.name}</span>
+                  </div>
+                  <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180" />
                 </div>
-                <ChevronLeft className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 rtl:rotate-180" />
-              </div>
 
-              {/* Description chips */}
-              <div className="flex flex-wrap gap-1">
-                {bucket.descriptions.slice(0, 3).map(desc => (
-                  <span
-                    key={desc}
-                    className="flex items-center gap-1 rounded-full bg-surface px-2 py-0.5 text-xs text-muted-foreground border border-border/60"
+                {/* Description chips */}
+                <div className="flex flex-wrap gap-1">
+                  {bucket.descriptions.slice(0, 3).map(desc => (
+                    <span
+                      key={desc}
+                      className="flex items-center gap-1 rounded-full border border-border/60 bg-surface px-2 py-0.5 text-xs text-muted-foreground"
+                    >
+                      <Tag className="h-2.5 w-2.5 shrink-0" />
+                      <span className="max-w-[12rem] truncate">{desc}</span>
+                    </span>
+                  ))}
+                  {bucket.descriptions.length > 3 && (
+                    <span className="rounded-full border border-border/60 bg-surface px-2 py-0.5 text-xs text-muted-foreground">
+                      +{bucket.descriptions.length - 3}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{bucket.descriptions.length} תיאורים</span>
+                </div>
+              </button>
+
+              {/* Delete button / confirm */}
+              {confirmDeleteId === bucket.id ? (
+                <div className="flex items-center gap-2 border-t border-border/60 pt-2 text-xs">
+                  <span className="flex-1 text-muted-foreground">
+                    למחוק את &quot;{bucket.name}&quot;?
+                  </span>
+                  <button
+                    onClick={() => handleDelete(bucket.id)}
+                    disabled={isDeleting}
+                    className="rounded px-2 py-1 text-destructive hover:bg-destructive/10 disabled:opacity-50"
                   >
-                    <Tag className="h-2.5 w-2.5 shrink-0" />
-                    <span className="max-w-[12rem] truncate">{desc}</span>
-                  </span>
-                ))}
-                {bucket.descriptions.length > 3 && (
-                  <span className="rounded-full bg-surface px-2 py-0.5 text-xs text-muted-foreground border border-border/60">
-                    +{bucket.descriptions.length - 3}
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span>{bucket.descriptions.length} תיאורים</span>
-              </div>
-            </button>
+                    {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'מחק'}
+                  </button>
+                  <button
+                    onClick={() => setConfirmDeleteId(null)}
+                    className="rounded px-2 py-1 text-muted-foreground hover:text-foreground"
+                  >
+                    ביטול
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDeleteId(bucket.id)}
+                  className="absolute end-2 top-2 rounded p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-destructive/10 hover:text-destructive"
+                  title="מחק קבוצה"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
