@@ -61,6 +61,17 @@ vi.mock('../db/prisma', () => ({
       delete: vi.fn(),
     },
     auditLog: { create: vi.fn() },
+    merchantBucket: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+    },
+    merchantBucketDescription: {
+      create: vi.fn(),
+      deleteMany: vi.fn(),
+    },
     // Executes each operation in the array sequentially and returns their results
     $transaction: vi.fn(async (ops: Promise<unknown>[]) => Promise.all(ops)),
   },

@@ -22,6 +22,8 @@ import {
   Receipt,
   BarChart2,
   TrendingUp,
+  Tag,
+  Loader2,
 } from 'lucide-react'
 import {
   BarChart,
@@ -37,9 +39,14 @@ import {
 import { formatILS } from '@famileconomy/utils'
 import { useAuth } from '../../../../../hooks/use-auth'
 import {
-  useMerchantTransactions,
-  buildMerchantChartData,
-} from '../../../../../hooks/use-merchant-transactions'
+  useMerchantBucket,
+  useBucketTransactions,
+  useRenameMerchantBucket,
+  useAddBucketDescription,
+  useRemoveBucketDescription,
+  useSearchDescriptions,
+  buildBucketChartData,
+} from '../../../../../hooks/use-merchant-bucket'
 import {
   useTransactionNotes,
   useAddNote,
@@ -521,7 +528,7 @@ function FilterModal({
           >
             <input
               type="radio"
-              name="isMust-merchant"
+              name="isMust-bucket"
               checked={isMustFilter === value}
               onChange={() => onSetIsMustFilter(value)}
               className="h-4 w-4 accent-primary"
@@ -643,16 +650,200 @@ function ChartTooltip({ active, payload, label }: ChartTooltipProps) {
   )
 }
 
+// ─── Description search panel ─────────────────────────────────────────────────
+
+interface DescriptionSearchProps {
+  bucketId: string
+  userId: string
+  existingDescriptions: string[]
+}
+
+function DescriptionSearchPanel({
+  bucketId,
+  userId,
+  existingDescriptions,
+}: DescriptionSearchProps) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen] = useState(false)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  const { data: results = [], isFetching } = useSearchDescriptions(userId, query)
+  const { mutate: addDesc, isPending: isAdding } = useAddBucketDescription(bucketId)
+
+  const existingSet = new Set(existingDescriptions)
+  const filteredResults = results.filter(d => !existingSet.has(d))
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
+
+  return (
+    <div className="relative" ref={panelRef}>
+      <button
+        onClick={() => {
+          setOpen(v => !v)
+          if (!open) setTimeout(() => inputRef.current?.focus(), 0)
+        }}
+        className="flex items-center gap-1.5 rounded-md border border-dashed border-border px-3 py-1 text-xs text-muted-foreground hover:border-primary hover:text-primary"
+      >
+        <Plus className="h-3 w-3" />
+        הוסף תיאור
+      </button>
+      {open && (
+        <div className="absolute start-0 top-8 z-50 w-72 rounded-lg border border-border bg-surface shadow-lg">
+          <div className="p-2">
+            <div className="relative">
+              <Search className="absolute start-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                ref={inputRef}
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="חפש תיאור..."
+                className="w-full rounded border border-border bg-background py-1.5 pe-2 ps-7 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              {isFetching && (
+                <Loader2 className="absolute end-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 animate-spin text-muted-foreground" />
+              )}
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filteredResults.length === 0 && query.length >= 2 && !isFetching && (
+              <p className="px-4 py-3 text-xs text-muted-foreground">לא נמצאו תיאורים תואמים</p>
+            )}
+            {filteredResults.length === 0 && query.length < 2 && (
+              <p className="px-4 py-3 text-xs text-muted-foreground">הקלד לפחות 2 תווים לחיפוש</p>
+            )}
+            {filteredResults.map(desc => (
+              <button
+                key={desc}
+                disabled={isAdding}
+                onClick={() => {
+                  addDesc(
+                    { userId, description: desc },
+                    {
+                      onSuccess: () => {
+                        setQuery('')
+                        setOpen(false)
+                      },
+                    }
+                  )
+                }}
+                className="flex w-full items-center gap-2 px-4 py-2.5 text-start text-xs hover:bg-surface-2 disabled:opacity-50"
+              >
+                <Plus className="h-3 w-3 shrink-0 text-primary" />
+                <span className="truncate">{desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Bucket name editor ───────────────────────────────────────────────────────
+
+function BucketNameEditor({
+  bucketId,
+  name,
+  userId,
+}: {
+  bucketId: string
+  name: string
+  userId: string
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(name)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const { mutate: rename, isPending } = useRenameMerchantBucket(bucketId)
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus()
+  }, [editing])
+
+  useEffect(() => {
+    if (!editing) setDraft(name)
+  }, [name, editing])
+
+  function handleSave() {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === name) {
+      setEditing(false)
+      setDraft(name)
+      return
+    }
+    rename({ userId, name: trimmed }, { onSuccess: () => setEditing(false) })
+  }
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2">
+        <input
+          ref={inputRef}
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          className="rounded border border-primary bg-background px-2 py-0.5 text-display-sm font-bold focus:outline-none"
+          onKeyDown={e => {
+            if (e.key === 'Enter') handleSave()
+            if (e.key === 'Escape') {
+              setEditing(false)
+              setDraft(name)
+            }
+          }}
+        />
+        <button
+          onClick={handleSave}
+          disabled={isPending}
+          className="rounded p-1 text-primary hover:bg-primary/10 disabled:opacity-50"
+          title="שמור"
+        >
+          <Check className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => {
+            setEditing(false)
+            setDraft(name)
+          }}
+          className="rounded p-1 text-muted-foreground hover:text-foreground"
+          title="בטל"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      className="group flex items-center gap-2 text-start"
+      onClick={() => setEditing(true)}
+      title="לחץ לעריכת שם"
+    >
+      <h1 className="text-display-sm">{name}</h1>
+      <Pencil className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+    </button>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-export default function MerchantPage() {
+export default function MerchantBucketPage() {
   const params = useParams()
   const router = useRouter()
-  const rawMerchant = params['merchant']
-  const merchantName = typeof rawMerchant === 'string' ? decodeURIComponent(rawMerchant) : ''
+  const bucketId = typeof params['merchant'] === 'string' ? params['merchant'] : ''
 
   const { user } = useAuth()
   const userId = user?.id
+
+  const { data: bucket, isLoading: isBucketLoading } = useMerchantBucket(bucketId, userId)
+  const { mutate: removeDesc } = useRemoveBucketDescription(bucketId)
 
   const [selectedYear, setSelectedYear] = useState<YearFilter>(new Date().getFullYear())
   const [chartType, setChartType] = useState<'line' | 'bar'>('line')
@@ -679,8 +870,8 @@ export default function MerchantPage() {
     return f
   }, [search, categoryFilter, minAmount, maxAmount, sortBy, sortDir, isMustFilter])
 
-  const { data, isLoading, isError } = useMerchantTransactions(
-    merchantName,
+  const { data, isLoading, isError } = useBucketTransactions(
+    bucketId,
     selectedYear,
     filters,
     userId
@@ -801,11 +992,9 @@ export default function MerchantPage() {
     isMustFilter !== 'all'
   const hasFilters = search || categoryFilter || minAmount || maxAmount || filterActive
 
-  // Chart data filtered to selected year (already filtered by API, but buildMerchantChartData works on whatever is returned)
-  const chartData = useMemo(() => buildMerchantChartData(data?.transactions ?? []), [data])
+  const chartData = useMemo(() => buildBucketChartData(data?.transactions ?? []), [data])
   const chartBars = chartData.map(d => ({ name: d.label, value: d.totalAgorot }))
 
-  // Resolve CSS custom properties to real color strings for Recharts (oklch values need runtime resolution)
   const chartColor = resolveColor('--destructive')
   const borderColor = resolveColor('--border')
 
@@ -817,6 +1006,25 @@ export default function MerchantPage() {
   }, [transactions])
 
   const installmentCount = transactions.filter(tx => tx.installmentNum !== null).length
+
+  if (isBucketLoading) {
+    return (
+      <div className="flex items-center justify-center p-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!bucket) {
+    return (
+      <div className="flex flex-col items-center justify-center gap-4 p-12">
+        <p className="text-muted-foreground">לא נמצא מוכר.</p>
+        <button onClick={() => router.back()} className="text-sm text-primary hover:underline">
+          חזור
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-4 p-6">
@@ -830,7 +1038,36 @@ export default function MerchantPage() {
           הוצאות
         </button>
         <span className="text-muted-foreground">/</span>
-        <h1 className="text-display-sm">{merchantName}</h1>
+        {userId && <BucketNameEditor bucketId={bucketId} name={bucket.name} userId={userId} />}
+      </div>
+
+      {/* ── Description chips ── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <Tag className="h-4 w-4 shrink-0 text-muted-foreground" />
+        {bucket.descriptions.map(desc => (
+          <span
+            key={desc}
+            className="group flex items-center gap-1 rounded-full bg-surface-2 px-3 py-1 text-xs"
+          >
+            <span>{desc}</span>
+            {bucket.descriptions.length > 1 && userId && (
+              <button
+                onClick={() => removeDesc({ userId, description: desc })}
+                className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+                title="הסר תיאור"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </span>
+        ))}
+        {userId && (
+          <DescriptionSearchPanel
+            bucketId={bucketId}
+            userId={userId}
+            existingDescriptions={bucket.descriptions}
+          />
+        )}
       </div>
 
       {/* ── Year selector ── */}

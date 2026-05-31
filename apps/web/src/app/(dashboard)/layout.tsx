@@ -16,6 +16,7 @@ import {
   LogOut,
   Menu,
   X,
+  Store,
 } from 'lucide-react'
 import { Button } from '@famileconomy/ui'
 import { useAuthStore } from '../../store/auth'
@@ -35,6 +36,7 @@ const NAV_SECTIONS = [
     items: [
       { href: '/dashboard/income', label: 'הכנסות', icon: TrendingUp },
       { href: '/dashboard/expenses', label: 'הוצאות', icon: TrendingDown },
+      { href: '/dashboard/merchant_buckets', label: 'מוכרים', icon: Store },
       { href: '/dashboard/recurring', label: 'תקביע', icon: Calendar },
       { href: '/dashboard/reports', label: 'דוחות', icon: BarChart2 },
     ],
@@ -104,7 +106,11 @@ function SidebarNav({
             )}
             <div className="flex flex-col gap-0.5">
               {section.items.map(item => {
-                const active = pathname === item.href
+                const active =
+                  item.href === '/dashboard/merchant_buckets'
+                    ? pathname.startsWith('/dashboard/merchant_buckets') ||
+                      pathname.startsWith('/dashboard/merchants/')
+                    : pathname === item.href
                 return (
                   <Link
                     key={item.href}

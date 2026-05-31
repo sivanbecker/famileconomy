@@ -27,6 +27,7 @@ export function useReviewTransaction(_accountId: string | null, _year: number, _
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['merchant-transactions'] })
+      void queryClient.invalidateQueries({ queryKey: ['bucket-transactions'] })
     },
   })
 }
@@ -47,6 +48,7 @@ export function useBulkReview(_accountId: string | null, _year: number, _month: 
       void queryClient.invalidateQueries({ queryKey: ['expenses'] })
       void queryClient.invalidateQueries({ queryKey: ['transactions'] })
       void queryClient.invalidateQueries({ queryKey: ['merchant-transactions'] })
+      void queryClient.invalidateQueries({ queryKey: ['bucket-transactions'] })
     },
   })
 }
