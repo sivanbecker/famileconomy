@@ -196,9 +196,7 @@ def extract_max_cards(wb: openpyxl.Workbook, valid_cards: list[str] = None) -> l
                 break
 
         if not card_col:
-            raise ValueError(
-                f"Sheet '{sheet}': Could not find card column '4 ספרות אחרונות של כרטיס האשראי' in first 10 rows"
-            )
+            continue  # sheet has no card column (e.g. "סיכום תיוגים") — skip it
 
         # Extract card numbers from data rows
         for row in ws.iter_rows(min_row=2):
