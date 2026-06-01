@@ -25,8 +25,15 @@ interface MonthNavigatorProps {
   onNext: () => void
 }
 
+function adjacentMonth(year: number, month: number, delta: 1 | -1) {
+  const date = new Date(year, month - 1 + delta, 1)
+  return HEBREW_MONTHS[date.getMonth()] ?? String(date.getMonth() + 1)
+}
+
 export function MonthNavigator({ year, month, onPrev, onNext }: MonthNavigatorProps) {
   const monthName = HEBREW_MONTHS[month - 1] ?? String(month)
+  const nextMonthName = adjacentMonth(year, month, 1)
+  const prevMonthName = adjacentMonth(year, month, -1)
 
   // In RTL layout the visual reading order is: [next ›] [month label] [‹ prev]
   // ChevronRight points toward the end of the inline axis — in RTL that is
@@ -37,12 +44,12 @@ export function MonthNavigator({ year, month, onPrev, onNext }: MonthNavigatorPr
       {/* Next month: visually on the leading (right in RTL) side */}
       <Button
         variant="ghost"
-        size="icon"
         aria-label="חודש הבא"
         onClick={onNext}
-        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+        className="flex h-auto flex-col items-center gap-0.5 px-2 py-1 text-white hover:text-white/70"
       >
         <ChevronRight className="h-4 w-4 rotate-180" />
+        <span className="text-xs font-bold leading-none text-white">{nextMonthName}</span>
       </Button>
 
       <div className="flex items-center gap-2 px-1" aria-live="polite" aria-atomic="true">
@@ -55,12 +62,12 @@ export function MonthNavigator({ year, month, onPrev, onNext }: MonthNavigatorPr
       {/* Prev month: visually on the trailing (left in RTL) side */}
       <Button
         variant="ghost"
-        size="icon"
         aria-label="חודש קודם"
         onClick={onPrev}
-        className="h-7 w-7 text-muted-foreground hover:text-foreground"
+        className="flex h-auto flex-col items-center gap-0.5 px-2 py-1 text-white hover:text-white/70"
       >
         <ChevronRight className="h-4 w-4" />
+        <span className="text-xs font-bold leading-none">{prevMonthName}</span>
       </Button>
     </div>
   )
